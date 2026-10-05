@@ -10,20 +10,16 @@ const getFontFamilyCSS = (fontName) => {
   }
 };
 
-/**
- * Detects text formatting properties from a pdf.js text content item.
- * Parses the fontName to determine bold, italic, and font family.
- */
 const detectTextProperties = (item) => {
   const fontName = (item.fontName || '').toLowerCase();
   
-  // Detect bold
+
   const isBold = /bold|black|heavy|demi|semibold/i.test(fontName);
   
-  // Detect italic
+
   const isItalic = /italic|oblique|inclined|slanted/i.test(fontName);
   
-  // Detect font family
+
   let fontFamily = 'Helvetica';
   if (/times|serif/i.test(fontName) && !/sans/i.test(fontName)) {
     fontFamily = 'TimesRoman';
@@ -32,30 +28,26 @@ const detectTextProperties = (item) => {
   } else if (/arial|helvetica|sans|gothic|verdana|tahoma|calibri|segoe/i.test(fontName)) {
     fontFamily = 'Helvetica';
   }
-  // For fonts that don't match any pattern, default to Helvetica
+
   
-  // Font size from transform matrix
+
   const fontSize = Math.round(Math.abs(item.transform[0]) || 12);
   
   return { fontFamily, isBold, isItalic, fontSize };
 };
 
-/**
- * Samples the rendered canvas at a text position to detect the text color.
- * Returns a hex color string.
- */
 const sampleCanvasColor = (canvas, textX, textY, textWidth, textHeight, scale) => {
   if (!canvas) return '#000000';
   
   const ctx = canvas.getContext('2d', { willReadFrequently: true });
   
-  // Sample a small area in the center of the text region (unscaled coords are already in canvas space)
+
   const sampleX = Math.round(textX + textWidth * 0.1);
   const sampleY = Math.round(textY - textHeight * 0.5);
   const sampleW = Math.max(1, Math.round(textWidth * 0.3));
   const sampleH = Math.max(1, Math.round(textHeight * 0.6));
   
-  // Clamp to canvas bounds
+
   const x = Math.max(0, Math.min(sampleX, canvas.width - sampleW));
   const y = Math.max(0, Math.min(sampleY, canvas.height - sampleH));
   const w = Math.min(sampleW, canvas.width - x);
@@ -67,14 +59,14 @@ const sampleCanvasColor = (canvas, textX, textY, textWidth, textHeight, scale) =
     const imageData = ctx.getImageData(x, y, w, h);
     const data = imageData.data;
     
-    // Find the darkest (most colored) non-white pixel
+
     let bestR = 0, bestG = 0, bestB = 0;
     let bestDarkness = 255 * 3; // Start with white
     
     for (let i = 0; i < data.length; i += 4) {
       const r = data[i], g = data[i + 1], b = data[i + 2], a = data[i + 3];
       
-      // Skip transparent or near-white pixels
+
       if (a < 128) continue;
       if (r > 240 && g > 240 && b > 240) continue;
       
@@ -87,10 +79,10 @@ const sampleCanvasColor = (canvas, textX, textY, textWidth, textHeight, scale) =
       }
     }
     
-    // If all pixels were white/transparent, default to black
+
     if (bestDarkness >= 255 * 3) return '#000000';
     
-    // Convert to hex
+
     const toHex = (c) => c.toString(16).padStart(2, '0');
     return `#${toHex(bestR)}${toHex(bestG)}${toHex(bestB)}`;
   } catch (e) {
@@ -102,7 +94,7 @@ const PdfViewer = ({
   pdfDoc, pageNumber, mode, annotations, setAnnotations, commitAnnotations,
   selectedTextId, setSelectedTextId, currentColor, currentFont, currentFontSize,
   onFontSizeChange, currentBold, currentItalic, currentUnderline, currentAlignment,
-  // New props
+
   scale,
   shapeType,
   strokeWidth,
@@ -111,7 +103,7 @@ const PdfViewer = ({
   searchHighlights,
   currentSearchIndex,
   pageRotation,
-  // Formatting sync callbacks
+
   onBoldChange,
   onItalicChange,
   onUnderlineChange,
@@ -123,43 +115,34 @@ const PdfViewer = ({
   const containerRef = useRef(null);
   const [viewport, setViewport] = useState(null);
 
-  // Drawing state
   const [isDrawing, setIsDrawing] = useState(false);
   const [currentPath, setCurrentPath] = useState(null);
 
-  // Text input state
   const [textInputVisible, setTextInputVisible] = useState(false);
   const [textInputPos, setTextInputPos] = useState({ x: 0, y: 0 });
   const [currentText, setCurrentText] = useState('');
   const [editingTextId, setEditingTextId] = useState(null);
   const inputRef = useRef(null);
 
-  // Drag & Resize state
   const [draggingId, setDraggingId] = useState(null);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [resizingId, setResizingId] = useState(null);
   const [resizeStart, setResizeStart] = useState(null);
 
-  // Context menu
   const [contextMenu, setContextMenu] = useState(null);
   const [croppingImageId, setCroppingImageId] = useState(null);
   const [cropStart, setCropStart] = useState(null);
 
-  // Shape drawing state
   const [shapeStart, setShapeStart] = useState(null);
   const [currentShape, setCurrentShape] = useState(null);
 
-  // Highlight drawing state
   const [highlightStart, setHighlightStart] = useState(null);
   const [currentHighlight, setCurrentHighlight] = useState(null);
 
-  // Comment tooltip
   const [hoveredComment, setHoveredComment] = useState(null);
 
-  // Native Text
   const [pdfTextItems, setPdfTextItems] = useState([]);
 
-  // Delete key handler
   useEffect(() => {
     const handleKeyDown = (e) => {
       if ((e.key === 'Delete' || e.key === 'Backspace') && selectedTextId && !textInputVisible && !editingTextId) {
@@ -177,7 +160,6 @@ const PdfViewer = ({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [selectedTextId, textInputVisible, editingTextId, annotations, commitAnnotations, setSelectedTextId]);
 
-  // Render PDF page
   useEffect(() => {
     let renderTask;
     let isActive = true;
@@ -221,8 +203,6 @@ const PdfViewer = ({
     };
   }, [pdfDoc, pageNumber, scale, pageRotation]);
 
-  // ============ POINTER HANDLERS ============
-
   const handlePointerDown = (e) => {
     if (contextMenu) setContextMenu(null);
 
@@ -262,7 +242,7 @@ const PdfViewer = ({
       setCurrentShape({ type: shapeType, x, y, width: 0, height: 0, color: currentColor, strokeWidth });
       setSelectedTextId(null);
     } else if (mode === 'stamp') {
-      // Stamp placement is handled via App.jsx callback
+
     } else if (mode === 'signature') {
       if (savedSignature) {
         const newId = 'sig-' + Date.now();
@@ -328,7 +308,7 @@ const PdfViewer = ({
         endY: y,
       }));
     } else if (draggingId && mode === 'select') {
-      // Drag all draggable items
+
       const newTexts = annotations.texts?.map(t => t.id === draggingId ? { ...t, x: x - dragOffset.x, y: y - dragOffset.y } : t);
       const newImages = annotations.images?.map(img => img.id === draggingId ? { ...img, x: x - dragOffset.x, y: y - dragOffset.y } : img);
       const newStamps = annotations.stamps?.map(s => s.id === draggingId ? { ...s, x: x - dragOffset.x, y: y - dragOffset.y } : s);
@@ -410,7 +390,6 @@ const PdfViewer = ({
         if (resizeStart.handle === 'bottom') newHeight = Math.max(20, resizeStart.height + dy);
       }
 
-      // Apply to images or signatures
       const updateItem = (item) => item.id === resizingId ? { ...item, x: newX, y: newY, width: newWidth, height: newHeight } : item;
       const newImages = annotations.images?.map(updateItem);
       const newSignatures = annotations.signatures?.map(updateItem);
@@ -478,8 +457,6 @@ const PdfViewer = ({
     }
   };
 
-  // ============ TEXT HANDLERS ============
-
   const saveText = () => {
     if (currentText.trim()) {
       if (editingTextId) {
@@ -511,8 +488,6 @@ const PdfViewer = ({
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); saveText(); }
     else if (e.key === 'Escape') { setTextInputVisible(false); setCurrentText(''); }
   };
-
-  // ============ ERASER HANDLERS ============
 
   const handlePathPointerDown = (e, pathIndex) => {
     if (mode === 'erase') {
@@ -547,8 +522,6 @@ const PdfViewer = ({
     }
   };
 
-  // ============ ITEM HANDLERS ============
-
   const handleTextPointerDown = (e, textItem) => {
     if (e.target.dataset.isHandle) return;
     if (mode === 'erase') {
@@ -561,7 +534,6 @@ const PdfViewer = ({
       e.stopPropagation();
       setSelectedTextId(textItem.id);
 
-      // Sync toolbar to reflect this text annotation's formatting
       if (onFontChange && textItem.fontFamily) onFontChange(textItem.fontFamily);
       if (onFontSizeChange && textItem.fontSize) onFontSizeChange(textItem.fontSize);
       if (onBoldChange) onBoldChange(!!textItem.isBold);
@@ -652,8 +624,6 @@ const PdfViewer = ({
     }
   };
 
-  // ============ RESIZE HANDLES ============
-
   const handleResizePointerDown = (e, item, handle) => {
     if (mode === 'select') {
       e.stopPropagation();
@@ -713,8 +683,6 @@ const PdfViewer = ({
     });
   };
 
-  // ============ RENDER HELPERS ============
-
   const resizeHandleStyle = (pos) => ({
     position: 'absolute', ...pos, width: 8, height: 8,
     backgroundColor: 'white', border: '1.5px solid #3b82f6',
@@ -764,7 +732,6 @@ const PdfViewer = ({
     </>
   );
 
-  // Shape SVG renderer
   const renderShapeSVG = (shape, isPreview = false) => {
     const { type, x, y, width, height, endX, endY, color, strokeWidth: sw } = shape;
     const stroke = color || '#ef4444';
@@ -800,8 +767,6 @@ const PdfViewer = ({
     return null;
   };
 
-  // ============ RENDER ============
-
   return (
     <div className="page-container" style={{ width: viewport?.width, height: viewport?.height }}>
       <canvas ref={canvasRef} style={{ display: 'block' }} />
@@ -819,7 +784,7 @@ const PdfViewer = ({
           touchAction: 'none'
         }}
       >
-        {/* Search highlights */}
+        {}
         {searchHighlights?.map((hl, i) => (
           <div
             key={`search-${i}`}
@@ -828,9 +793,9 @@ const PdfViewer = ({
           />
         ))}
 
-        {/* SVG layer for paths, shapes */}
+        {}
         <svg style={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0, pointerEvents: 'none', overflow: 'visible' }}>
-          {/* Drawing paths */}
+          {}
           {annotations.paths?.map((path, i) => (
             <polyline
               key={`path-${i}`}
@@ -852,14 +817,14 @@ const PdfViewer = ({
             />
           )}
 
-          {/* Shapes */}
+          {}
           {annotations.shapes?.map((shape) => (
             <g key={shape.id}
               onPointerDown={(e) => handleShapePointerDown(e, shape)}
               style={{ pointerEvents: (mode === 'select' || mode === 'erase') ? 'auto' : 'none', cursor: mode === 'select' ? 'move' : mode === 'erase' ? 'pointer' : 'default' }}
             >
               {renderShapeSVG(shape)}
-              {/* Invisible wider hit area for lines/arrows */}
+              {}
               {(shape.type === 'line' || shape.type === 'arrow') && (
                 <line
                   x1={shape.startX ?? shape.x} y1={shape.startY ?? shape.y}
@@ -872,7 +837,7 @@ const PdfViewer = ({
           {currentShape && renderShapeSVG(currentShape, true)}
         </svg>
 
-        {/* Highlights */}
+        {}
         {annotations.highlights?.map((hl) => (
           <div
             key={hl.id}
@@ -898,7 +863,7 @@ const PdfViewer = ({
           }} />
         )}
 
-        {/* Erasures */}
+        {}
         {annotations.erasures?.map(erase => (
           <div key={erase.id} style={{
             position: 'absolute', left: erase.x, top: erase.y,
@@ -907,7 +872,7 @@ const PdfViewer = ({
           }} />
         ))}
 
-        {/* Native PDF Text for Editing */}
+        {}
         {pdfTextItems.map((item, i) => {
           const fontSize = item.transform[0] * scale;
           const x = item.transform[4] * scale;
@@ -921,10 +886,8 @@ const PdfViewer = ({
                 e.stopPropagation();
                 if (mode !== 'select' && mode !== 'text') return;
 
-                // Auto-detect formatting from the native PDF text item
                 const detected = detectTextProperties(item);
 
-                // Sample the canvas to detect text color
                 const canvasX = item.transform[4] * scale;
                 const canvasY = viewport?.height ? viewport.height - (item.transform[5] * scale) : 0;
                 const detectedColor = sampleCanvasColor(
@@ -950,7 +913,6 @@ const PdfViewer = ({
                   width: width + 20, // Give a bit of extra space for editing
                 };
 
-                // Sync toolbar to detected formatting
                 onFontSizeChange(detected.fontSize);
                 if (onFontChange) onFontChange(detected.fontFamily);
                 if (onBoldChange) onBoldChange(detected.isBold);
@@ -981,7 +943,7 @@ const PdfViewer = ({
           );
         })}
 
-        {/* Images */}
+        {}
         {annotations.images?.map((img) => {
           const isSelected = img.id === selectedTextId;
           const isCropping = croppingImageId === img.id;
@@ -1046,7 +1008,7 @@ const PdfViewer = ({
           );
         })}
 
-        {/* Stamps */}
+        {}
         {annotations.stamps?.map((stamp) => {
           const isSelected = stamp.id === selectedTextId;
           return (
@@ -1068,7 +1030,7 @@ const PdfViewer = ({
           );
         })}
 
-        {/* Signatures */}
+        {}
         {annotations.signatures?.map((sig) => {
           const isSelected = sig.id === selectedTextId;
           return (
@@ -1089,7 +1051,7 @@ const PdfViewer = ({
           );
         })}
 
-        {/* Comments / Sticky Notes */}
+        {}
         {annotations.comments?.map((comment) => {
           const isSelected = comment.id === selectedTextId;
           const isHovered = hoveredComment === comment.id;
@@ -1115,7 +1077,7 @@ const PdfViewer = ({
           );
         })}
 
-        {/* Texts */}
+        {}
         {annotations.texts?.map((t) => {
           if (t.id === editingTextId) return null;
           const isSelected = t.id === selectedTextId;
@@ -1150,7 +1112,7 @@ const PdfViewer = ({
           );
         })}
 
-        {/* Text Input */}
+        {}
         {textInputVisible && (() => {
           const editingText = editingTextId ? annotations.texts?.find(t => t.id === editingTextId) : null;
           const inputColor = editingText ? editingText.color : currentColor;
@@ -1192,7 +1154,7 @@ const PdfViewer = ({
           );
         })()}
 
-        {/* Context Menu */}
+        {}
         {contextMenu && (
           <div className="context-menu" style={{ left: contextMenu.x - containerRef.current.getBoundingClientRect().left, top: contextMenu.y - containerRef.current.getBoundingClientRect().top }}
             onPointerDown={(e) => e.stopPropagation()}>

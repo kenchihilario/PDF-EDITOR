@@ -13,20 +13,11 @@ const hexToRgb = (hex) => {
   } : { r: 0, g: 0, b: 0 };
 };
 
-/**
- * Exports the PDF with all annotations applied.
- * @param {ArrayBuffer} originalPdfBytes 
- * @param {Object} annotations { [pageNum]: { paths, texts, images, erasures, highlights, shapes, stamps, signatures, comments } }
- * @param {number} scale - The zoom level used in the viewer
- * @param {Object} pageRotations - { [pageNum]: degreesCW }
- * @returns {Promise<Uint8Array>}
- */
 export const exportPdf = async (originalPdfBytes, annotations, scale = 1.5, pageRotations = {}) => {
   const pdfDoc = await PDFDocument.load(originalPdfBytes);
   const pages = pdfDoc.getPages();
   const SCALE = scale;
 
-  // Apply page rotations
   for (const [pageNumStr, rotation] of Object.entries(pageRotations)) {
     const pageIdx = Number(pageNumStr) - 1;
     if (pageIdx >= 0 && pageIdx < pages.length && rotation) {
@@ -34,7 +25,6 @@ export const exportPdf = async (originalPdfBytes, annotations, scale = 1.5, page
     }
   }
 
-  // Embed fonts
   const fonts = {
     Helvetica: await pdfDoc.embedFont(StandardFonts.Helvetica),
     HelveticaBold: await pdfDoc.embedFont(StandardFonts.HelveticaBold),
@@ -77,7 +67,6 @@ export const exportPdf = async (originalPdfBytes, annotations, scale = 1.5, page
 
     const { width, height } = page.getSize();
 
-    // Helper for cropped images
     const getCroppedImageBytes = async (img) => {
       return new Promise((resolve) => {
         const cropW = img.cropPercentWidth ?? 1;
@@ -104,14 +93,12 @@ export const exportPdf = async (originalPdfBytes, annotations, scale = 1.5, page
       });
     };
 
-    // Helper to embed a data URL image
     const embedDataUrlImage = async (dataUrl) => {
       const response = await fetch(dataUrl);
       const blob = await response.blob();
       const arrayBuf = await blob.arrayBuffer();
       const bytes = new Uint8Array(arrayBuf);
 
-      // Check if PNG or JPEG by looking at the data URL prefix or magic bytes
       if (dataUrl.includes('image/png') || bytes[0] === 0x89) {
         return await pdfDoc.embedPng(bytes);
       } else {
@@ -119,7 +106,6 @@ export const exportPdf = async (originalPdfBytes, annotations, scale = 1.5, page
       }
     };
 
-    // === ERASURES (Whiteout) ===
     if (pageAnns.erasures) {
       for (const erase of pageAnns.erasures) {
         page.drawRectangle({
@@ -132,7 +118,6 @@ export const exportPdf = async (originalPdfBytes, annotations, scale = 1.5, page
       }
     }
 
-    // === HIGHLIGHTS ===
     if (pageAnns.highlights) {
       for (const hl of pageAnns.highlights) {
         const color = hexToRgb(hl.color || '#ffff00');
@@ -147,7 +132,6 @@ export const exportPdf = async (originalPdfBytes, annotations, scale = 1.5, page
       }
     }
 
-    // === SHAPES ===
     if (pageAnns.shapes) {
       for (const shape of pageAnns.shapes) {
         const color = hexToRgb(shape.color || '#ef4444');
@@ -164,14 +148,12 @@ export const exportPdf = async (originalPdfBytes, annotations, scale = 1.5, page
             borderWidth: sw,
           });
         } else if (shape.type === 'circle') {
-          // Approximate ellipse with a rectangle border (pdf-lib doesn't have ellipse)
-          // Draw as 4 bezier curves forming an ellipse
+
           const cx = shape.x / SCALE + (shape.width / SCALE) / 2;
           const cy = height - (shape.y / SCALE) - (shape.height / SCALE) / 2;
           const rx = (shape.width / SCALE) / 2;
           const ry = (shape.height / SCALE) / 2;
 
-          // Use SVG-style ellipse approximation with bezier curves
           const k = 0.5522848; // magic number for bezier circle approximation
           page.drawSvgPath(
             `M ${cx - rx} ${cy} ` +
@@ -220,7 +202,6 @@ export const exportPdf = async (originalPdfBytes, annotations, scale = 1.5, page
       }
     }
 
-    // === IMAGES ===
     if (pageAnns.images) {
       for (const img of pageAnns.images) {
         let pdfImage;
@@ -239,7 +220,6 @@ export const exportPdf = async (originalPdfBytes, annotations, scale = 1.5, page
       }
     }
 
-    // === SIGNATURES ===
     if (pageAnns.signatures) {
       for (const sig of pageAnns.signatures) {
         try {
@@ -256,7 +236,6 @@ export const exportPdf = async (originalPdfBytes, annotations, scale = 1.5, page
       }
     }
 
-    // === STAMPS ===
     if (pageAnns.stamps) {
       for (const stamp of pageAnns.stamps) {
         const font = fonts.HelveticaBold;
@@ -265,7 +244,6 @@ export const exportPdf = async (originalPdfBytes, annotations, scale = 1.5, page
         const pdfX = stamp.x / SCALE;
         const pdfY = height - (stamp.y / SCALE);
 
-        // Draw stamp border and text
         const textWidth = font.widthOfTextAtSize(stamp.label, size);
         const padding = 8 / SCALE;
         const borderThickness = 3 / SCALE;
@@ -291,7 +269,6 @@ export const exportPdf = async (originalPdfBytes, annotations, scale = 1.5, page
       }
     }
 
-    // === TEXTS ===
     if (pageAnns.texts) {
       for (const t of pageAnns.texts) {
         const pdfXBase = t.x / SCALE;
@@ -364,7 +341,6 @@ export const exportPdf = async (originalPdfBytes, annotations, scale = 1.5, page
       }
     }
 
-    // === DRAWINGS ===
     if (pageAnns.paths) {
       for (const path of pageAnns.paths) {
         if (!path.points || path.points.length < 2) continue;
@@ -384,16 +360,14 @@ export const exportPdf = async (originalPdfBytes, annotations, scale = 1.5, page
       }
     }
 
-    // === COMMENTS (as small text annotations) ===
     if (pageAnns.comments) {
       for (const comment of pageAnns.comments) {
         if (!comment.text) continue;
-        // Draw a small note indicator
+
         const noteX = comment.x / SCALE;
         const noteY = height - (comment.y / SCALE);
         const noteColor = hexToRgb(comment.color || '#f59e0b');
 
-        // Draw note icon background
         page.drawRectangle({
           x: noteX - 6,
           y: noteY - 6,
@@ -402,7 +376,6 @@ export const exportPdf = async (originalPdfBytes, annotations, scale = 1.5, page
           color: rgb(noteColor.r, noteColor.g, noteColor.b),
         });
 
-        // Add the comment text as a small annotation near the icon
         const font = fonts.Helvetica;
         const fontSize = 8;
         const lines = comment.text.split('\n').slice(0, 3); // Max 3 lines

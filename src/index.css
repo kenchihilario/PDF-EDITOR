@@ -1,16 +1,16 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
 :root {
-  /* Premium Dark Glass Theme Palette */
+  
   --bg-dark: #0a0f0c;
   --bg-secondary: rgba(20, 30, 24, 0.9);
   --bg-tertiary: rgba(30, 42, 34, 0.8);
   
-  /* Vibrant Gradients */
+  
   --grad-primary: linear-gradient(135deg, #059669, #10b981);
   --grad-hover: linear-gradient(135deg, #34d399, #10b981);
   
-  /* Glass Tokens */
+  
   --glass-bg: rgba(15, 26, 20, 0.65);
   --glass-border: rgba(255, 255, 255, 0.08);
   --glass-highlight: rgba(255, 255, 255, 0.03);
@@ -60,9 +60,6 @@ body {
   overflow: hidden;
 }
 
-/* ============================================
-   APP CONTAINER
-   ============================================ */
 .app-container {
   display: flex;
   flex-direction: column;
@@ -80,9 +77,6 @@ body {
   100% { background-position: 100% 100%; }
 }
 
-/* ============================================
-   TOOLBAR
-   ============================================ */
 .toolbar {
   height: auto;
   min-height: 56px;
@@ -145,9 +139,6 @@ body {
   flex-shrink: 0;
 }
 
-/* ============================================
-   BUTTONS
-   ============================================ */
 .btn {
   display: inline-flex;
   align-items: center;
@@ -250,9 +241,6 @@ body {
   background: rgba(239, 68, 68, 0.1) !important;
 }
 
-/* ============================================
-   TOOLBAR INPUTS
-   ============================================ */
 .toolbar-input {
   background: var(--bg-tertiary);
   color: var(--text-primary);
@@ -328,9 +316,6 @@ body {
   white-space: nowrap;
 }
 
-/* ============================================
-   COLOR PICKER
-   ============================================ */
 input[type="color"] {
   -webkit-appearance: none;
   border: none;
@@ -358,9 +343,6 @@ input[type="color"]:hover {
   box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.5);
 }
 
-/* ============================================
-   MAIN CONTENT
-   ============================================ */
 .main-content {
   display: flex;
   flex: 1;
@@ -368,9 +350,6 @@ input[type="color"]:hover {
   position: relative;
 }
 
-/* ============================================
-   SIDEBAR
-   ============================================ */
 .sidebar {
   width: 200px;
   background: var(--glass-bg);
@@ -496,7 +475,6 @@ input[type="color"]:hover {
   display: block;
 }
 
-/* Sidebar Context Menu */
 .sidebar-context-menu {
   position: fixed;
   background: rgba(20, 30, 24, 0.95);
@@ -542,9 +520,6 @@ input[type="color"]:hover {
   margin: 4px 0;
 }
 
-/* ============================================
-   WORKSPACE
-   ============================================ */
 .workspace {
   flex: 1;
   background: transparent;
@@ -568,7 +543,6 @@ input[type="color"]:hover {
   transform-origin: center top;
 }
 
-/* Document overlay */
 .interactive-overlay {
   position: absolute;
   top: 0;
@@ -614,9 +588,6 @@ input[type="color"]:hover {
   cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='%23f59e0b' stroke='%23000' stroke-width='1'%3E%3Cpath d='M7.9 20A9 9 0 1 0 4 16.1L2 22Z'/%3E%3C/svg%3E") 2 20, auto;
 }
 
-/* ============================================
-   UPLOAD STATE
-   ============================================ */
 .empty-state {
   display: flex;
   flex-direction: column;
@@ -689,9 +660,6 @@ input[type="color"]:hover {
   font-weight: 600;
 }
 
-/* ============================================
-   LOADING OVERLAY
-   ============================================ */
 .loading-overlay {
   position: absolute;
   top: 0;
@@ -719,9 +687,6 @@ input[type="color"]:hover {
   to { transform: rotate(360deg); }
 }
 
-/* ============================================
-   SEARCH BAR
-   ============================================ */
 .search-bar {
   display: flex;
   align-items: center;
@@ -777,7 +742,6 @@ input[type="color"]:hover {
   gap: 2px;
 }
 
-/* Search highlight on PDF */
 .search-highlight {
   position: absolute;
   background: rgba(255, 213, 0, 0.35);
@@ -794,9 +758,6 @@ input[type="color"]:hover {
   box-shadow: 0 0 6px rgba(255, 140, 0, 0.4);
 }
 
-/* ============================================
-   SIGNATURE MODAL
-   ============================================ */
 .modal-overlay {
   position: fixed;
   top: 0;
@@ -912,9 +873,6 @@ input[type="color"]:hover {
   padding: 16px 24px 20px;
 }
 
-/* ============================================
-   STAMP PICKER
-   ============================================ */
 .stamp-picker-overlay {
   position: fixed;
   top: 0;
@@ -973,7 +931,6 @@ input[type="color"]:hover {
   box-shadow: var(--shadow-sm);
 }
 
-/* Rendered stamp on page */
 .stamp-annotation {
   position: absolute;
   padding: 8px 20px;
@@ -992,9 +949,6 @@ input[type="color"]:hover {
   white-space: nowrap;
 }
 
-/* ============================================
-   COMMENT / STICKY NOTES
-   ============================================ */
 .comment-panel {
   width: 280px;
   background: var(--glass-bg);
@@ -1159,7 +1113,6 @@ input[type="color"]:hover {
   color: var(--text-muted);
 }
 
-/* Sticky note icon on page */
 .sticky-note {
   position: absolute;
   width: 28px;
@@ -1199,23 +1152,12 @@ input[type="color"]:hover {
   z-index: 20;
 }
 
-/* ============================================
-   SHAPE ANNOTATIONS
-   ============================================ */
 .shape-preview {
   position: absolute;
   pointer-events: none;
   z-index: 4;
 }
 
-/* ============================================
-   HIGHLIGHT ANNOTATIONS
-   ============================================ */
-/* These are rendered via SVG with opacity in PdfViewer */
-
-/* ============================================
-   TOOLTIP
-   ============================================ */
 .tooltip-wrapper {
   position: relative;
 }
@@ -1244,9 +1186,6 @@ input[type="color"]:hover {
   z-index: 100;
 }
 
-/* ============================================
-   CONTEXT MENU (images on PDF)
-   ============================================ */
 .context-menu {
   position: fixed;
   background: rgba(20, 30, 24, 0.95);
@@ -1281,9 +1220,6 @@ input[type="color"]:hover {
   color: var(--text-primary);
 }
 
-/* ============================================
-   STATUS BAR (bottom)
-   ============================================ */
 .status-bar {
   height: 28px;
   background: rgba(10, 15, 12, 0.8);
@@ -1311,9 +1247,6 @@ input[type="color"]:hover {
   gap: 4px;
 }
 
-/* ============================================
-   SCROLLBARS
-   ============================================ */
 ::-webkit-scrollbar {
   width: 7px;
   height: 7px;
@@ -1329,16 +1262,10 @@ input[type="color"]:hover {
   background: rgba(255, 255, 255, 0.15);
 }
 
-/* ============================================
-   HIDDEN INPUT
-   ============================================ */
 .hidden-input {
   display: none;
 }
 
-/* ============================================
-   KEYBOARD SHORTCUT BADGES
-   ============================================ */
 .kbd {
   background: rgba(255, 255, 255, 0.06);
   border: 1px solid var(--border-color);
@@ -1350,9 +1277,6 @@ input[type="color"]:hover {
   margin-left: 6px;
 }
 
-/* ============================================
-   DROPDOWN MENUS
-   ============================================ */
 .dropdown-menu {
   position: absolute;
   top: 100%;
@@ -1403,9 +1327,6 @@ input[type="color"]:hover {
   margin: 4px 0;
 }
 
-/* ============================================
-   MOBILE RESPONSIVENESS
-   ============================================ */
 @media (max-width: 768px) {
   .toolbar {
     padding: 8px 12px;

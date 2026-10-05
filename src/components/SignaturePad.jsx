@@ -16,7 +16,7 @@ const SignaturePad = ({ onSave, onClose }) => {
     canvas.height = 200;
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-    // Draw signature line
+
     ctx.strokeStyle = '#d1d5db';
     ctx.lineWidth = 1;
     ctx.setLineDash([6, 4]);
@@ -25,7 +25,7 @@ const SignaturePad = ({ onSave, onClose }) => {
     ctx.lineTo(520, 160);
     ctx.stroke();
     ctx.setLineDash([]);
-    // "Sign here" text
+
     ctx.fillStyle = '#9ca3af';
     ctx.font = '12px Inter, sans-serif';
     ctx.fillText('Sign here', 40, 180);

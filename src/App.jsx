@@ -15,7 +15,7 @@ import CommentPanel from './components/CommentPanel';
 import { exportPdf } from './utils/pdfEditor';
 
 function App() {
-  // === PDF STATE ===
+
   const [pdfFile, setPdfFile] = useState(null);
   const [pdfDoc, setPdfDoc] = useState(null);
   const [numPages, setNumPages] = useState(0);
@@ -23,7 +23,6 @@ function App() {
   const [thumbnails, setThumbnails] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
 
-  // === TOOL STATE ===
   const [mode, setMode] = useState('select');
   const [currentFont, setCurrentFont] = useState('Helvetica');
   const [currentFontSize, setCurrentFontSize] = useState(16);
@@ -37,18 +36,14 @@ function App() {
   const [shapeType, setShapeType] = useState('rectangle');
   const [highlightColor, setHighlightColor] = useState('#ffff00');
 
-  // === ZOOM ===
   const [zoomLevel, setZoomLevel] = useState(1.5);
 
-  // === ANNOTATIONS & HISTORY ===
   const [annotations, setAnnotations] = useState({});
   const [history, setHistory] = useState([]);
   const [redoHistory, setRedoHistory] = useState([]);
 
-  // === PAGE MANAGEMENT ===
   const [pageRotations, setPageRotations] = useState({});
 
-  // === FEATURES ===
   const [showSearch, setShowSearch] = useState(false);
   const [searchHighlights, setSearchHighlights] = useState([]);
   const [currentSearchIndex, setCurrentSearchIndex] = useState(0);
@@ -58,11 +53,8 @@ function App() {
   const [selectedStamp, setSelectedStamp] = useState(null);
   const [showComments, setShowComments] = useState(false);
 
-  // === DRAG & DROP ===
   const [isDragOver, setIsDragOver] = useState(false);
   const fileInputRef = useRef(null);
-
-  // ============ FILE HANDLING ============
 
   const loadPdf = useCallback(async (arrayBuffer) => {
     setIsLoading(true);
@@ -102,7 +94,6 @@ function App() {
     }
   };
 
-  // Drag & Drop handlers
   const handleDragOver = (e) => {
     e.preventDefault();
     e.stopPropagation();
@@ -132,8 +123,6 @@ function App() {
     }
   };
 
-  // ============ EXPORT ============
-
   const handleDownload = async () => {
     if (!pdfFile) return;
     setIsLoading(true);
@@ -153,8 +142,6 @@ function App() {
       setIsLoading(false);
     }
   };
-
-  // ============ ANNOTATION MANAGEMENT ============
 
   const updateAnnotations = (pageNum, newAnnotations) => {
     setAnnotations(prev => ({ ...prev, [pageNum]: newAnnotations }));
@@ -182,8 +169,6 @@ function App() {
     }
   };
 
-  // ============ TEXT FORMATTING ============
-
   const updateSelectedText = (updates) => {
     if (!selectedTextId || !pdfDoc) return;
     const currentAnn = annotations[currentPage];
@@ -199,8 +184,6 @@ function App() {
   const updateUnderline = (isUnderline) => { setCurrentUnderline(isUnderline); updateSelectedText({ isUnderline }); };
   const updateAlignment = (alignment) => { setCurrentAlignment(alignment); updateSelectedText({ alignment }); };
   const updateTextColor = (color) => { setCurrentColor(color); updateSelectedText({ color }); };
-
-  // ============ IMAGE HANDLING ============
 
   const handleAddImage = (file) => {
     if (!file) return;
@@ -229,13 +212,10 @@ function App() {
     reader.readAsDataURL(file);
   };
 
-  // ============ STAMP HANDLING ============
-
   const handleStampSelect = (stamp) => {
     setSelectedStamp(stamp);
     setMode('stamp');
 
-    // Place stamp immediately at center of current page view
     const newId = 'stamp-' + Date.now();
     const currentAnn = annotations[currentPage] || { paths: [], texts: [], images: [], erasures: [], highlights: [], shapes: [], stamps: [], signatures: [], comments: [] };
     commitAnnotations(currentPage, {
@@ -253,15 +233,11 @@ function App() {
     setMode('select');
   };
 
-  // ============ SIGNATURE HANDLING ============
-
   const handleSignatureSave = (dataUrl) => {
     setSavedSignature(dataUrl);
     setShowSignaturePad(false);
     setMode('signature');
   };
-
-  // ============ COMMENT HANDLING ============
 
   const handleDeleteComment = (pageNum, commentId) => {
     const ann = annotations[pageNum];
@@ -275,14 +251,12 @@ function App() {
   const handleUpdateComment = (pageNum, commentId, text) => {
     const ann = annotations[pageNum];
     if (!ann) return;
-    // Use updateAnnotations (not commit) for live typing
+
     updateAnnotations(pageNum, {
       ...ann,
       comments: ann.comments?.map(c => c.id === commentId ? { ...c, text } : c) || []
     });
   };
-
-  // ============ PAGE MANAGEMENT ============
 
   const handleAddBlankPage = async () => {
     if (!pdfFile) return;
@@ -312,7 +286,6 @@ function App() {
       pdfDocLib.removePage(pageNum - 1);
       const newBytes = await pdfDocLib.save();
 
-      // Shift annotations
       const newAnnotations = {};
       for (const [key, value] of Object.entries(annotations)) {
         const p = Number(key);
@@ -364,12 +337,10 @@ function App() {
       const pdfDocLib = await PDFDocument.load(pdfFile);
       const pages = pdfDocLib.getPages();
 
-      // Create new doc with reordered pages
       const newDoc = await PDFDocument.create();
       const pageCount = pages.length;
       const order = Array.from({ length: pageCount }, (_, i) => i);
 
-      // Remove from old position, insert at new
       const fromIdx = fromPage - 1;
       const toIdx = toPage - 1;
       order.splice(fromIdx, 1);
@@ -390,15 +361,12 @@ function App() {
     }
   };
 
-  // ============ SEARCH ============
-
   const handleHighlightMatches = (matches, activeIndex = 0) => {
-    // Only show highlights for current page
+
     const pageMatches = matches.filter(m => m.pageNum === currentPage);
     const globalActiveIdx = activeIndex;
     let localActiveIdx = -1;
 
-    // Find which local index corresponds to the global active index
     let count = 0;
     for (let i = 0; i < matches.length; i++) {
       if (matches[i].pageNum === currentPage) {
@@ -417,15 +385,12 @@ function App() {
     setCurrentPage(pageNum);
   };
 
-  // ============ KEYBOARD SHORTCUTS ============
-
   useEffect(() => {
     const handleKeyDown = (e) => {
-      // Don't intercept when typing in inputs
+
       const tag = e.target.tagName;
       if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
 
-      // Ctrl combinations
       if (e.ctrlKey || e.metaKey) {
         if (e.key === 'z') { e.preventDefault(); handleUndo(); }
         else if (e.key === 'y') { e.preventDefault(); handleRedo(); }
@@ -433,7 +398,7 @@ function App() {
         else if (e.key === 's') { e.preventDefault(); handleDownload(); }
         else if (e.key === 'o') {
           e.preventDefault();
-          // Trigger file input
+
           const input = document.querySelector('.toolbar .hidden-input[accept="application/pdf"]');
           if (input) input.click();
         }
@@ -442,7 +407,6 @@ function App() {
 
       if (!pdfDoc) return;
 
-      // Tool shortcuts
       switch (e.key.toLowerCase()) {
         case 'v': setMode('select'); break;
         case 't': setMode('text'); break;
@@ -471,8 +435,6 @@ function App() {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [pdfDoc, currentPage, numPages, annotations, history, redoHistory, pdfFile, zoomLevel]);
-
-  // ============ RENDER ============
 
   const emptyAnn = { paths: [], texts: [], images: [], erasures: [], highlights: [], shapes: [], stamps: [], signatures: [], comments: [] };
 
@@ -538,7 +500,7 @@ function App() {
         onDuplicatePage={handleDuplicatePage}
       />
 
-      {/* Search Bar */}
+      {}
       {showSearch && pdfDoc && (
         <SearchBar
           pdfDoc={pdfDoc}
@@ -637,7 +599,7 @@ function App() {
         )}
       </div>
 
-      {/* Status Bar */}
+      {}
       {pdfDoc && (
         <div className="status-bar">
           <div className="status-bar-left">
@@ -658,7 +620,7 @@ function App() {
         </div>
       )}
 
-      {/* Modals */}
+      {}
       {showSignaturePad && (
         <SignaturePad
           onSave={handleSignatureSave}

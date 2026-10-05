@@ -4,7 +4,6 @@ import { MessageSquare, X, Trash2, ChevronRight } from 'lucide-react';
 const CommentPanel = ({ annotations, currentPage, onNavigateToPage, onDeleteComment, onUpdateComment }) => {
   const [expandedComment, setExpandedComment] = useState(null);
 
-  // Gather all comments across pages
   const allComments = [];
   if (annotations) {
     for (const [pageNum, ann] of Object.entries(annotations)) {
@@ -16,10 +15,8 @@ const CommentPanel = ({ annotations, currentPage, onNavigateToPage, onDeleteComm
     }
   }
 
-  // Sort by page then by creation time
   allComments.sort((a, b) => a.pageNum - b.pageNum || (a.timestamp || 0) - (b.timestamp || 0));
 
-  // Group by page
   const grouped = {};
   for (const c of allComments) {
     if (!grouped[c.pageNum]) grouped[c.pageNum] = [];

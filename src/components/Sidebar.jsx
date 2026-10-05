@@ -84,7 +84,7 @@ const Sidebar = ({ thumbnails, currentPage, setCurrentPage, pageRotations, onAdd
         })}
       </div>
 
-      {/* Context Menu */}
+      {}
       {contextMenu && (
         <div
           className="sidebar-context-menu"
