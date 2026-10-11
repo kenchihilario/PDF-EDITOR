@@ -59,15 +59,15 @@ const Toolbar = ({
 
   return (
     <div className="toolbar">
-      {}
+      { }
       <div className="toolbar-brand">
         <FileText size={22} color="#10b981" />
-        <span>PDF Pro</span>
+        <span>Kenchi' pdf editor</span>
       </div>
 
       {hasDocument && (
         <div className="toolbar-center">
-          {}
+          { }
           <div className="toolbar-group">
             <button className={`btn btn-tool ${mode === 'select' ? 'active' : ''}`} onClick={() => setMode('select')} title="Select & Move (V)">
               <MousePointer2 size={16} />
@@ -88,7 +88,7 @@ const Toolbar = ({
 
           <div className="toolbar-divider" />
 
-          {}
+          { }
           <div className="toolbar-group" ref={shapeDropdownRef} style={{ position: 'relative' }}>
             <button
               className={`btn btn-tool ${mode === 'shape' ? 'active' : ''}`}
@@ -126,7 +126,7 @@ const Toolbar = ({
             )}
           </div>
 
-          {}
+          { }
           <div className="toolbar-group">
             <button className={`btn btn-tool ${mode === 'stamp' ? 'active' : ''}`} onClick={onOpenStampPicker} title="Stamps">
               <Stamp size={16} />
@@ -153,7 +153,7 @@ const Toolbar = ({
 
           <div className="toolbar-divider" />
 
-          {}
+          { }
           <div className="toolbar-group">
             <button className="btn btn-icon" onClick={onUndo} disabled={!canUndo} title="Undo (Ctrl+Z)">
               <Undo2 size={16} />
@@ -165,7 +165,7 @@ const Toolbar = ({
 
           <div className="toolbar-divider" />
 
-          {}
+          { }
           <div className="toolbar-group">
             <input
               type="color"
@@ -195,7 +195,7 @@ const Toolbar = ({
             )}
           </div>
 
-          {}
+          { }
           {(mode === 'text' || (selectedTextId && mode === 'select' && !selectedTextId.startsWith('img-') && !selectedTextId.startsWith('stamp-') && !selectedTextId.startsWith('sig-'))) && (
             <>
               <div className="toolbar-divider" />
@@ -249,23 +249,23 @@ const Toolbar = ({
         </div>
       )}
 
-      {}
+      { }
       <div className="toolbar-actions">
         {hasDocument && (
           <>
-            {}
+            { }
             <button className="btn btn-icon" onClick={onToggleSearch} title="Search (Ctrl+F)">
               <Search size={16} />
             </button>
 
-            {}
+            { }
             <button className={`btn btn-icon ${showComments ? 'active' : ''}`} onClick={onToggleComments} title="Comments Panel">
               <MessageSquare size={16} />
             </button>
 
             <div className="toolbar-divider" />
 
-            {}
+            { }
             <div className="toolbar-group">
               <button className="btn btn-icon" onClick={() => onPageChange(Math.max(1, currentPage - 1))} disabled={currentPage <= 1} title="Previous Page (←)">
                 <ChevronLeft size={16} />
@@ -289,7 +289,7 @@ const Toolbar = ({
 
             <div className="toolbar-divider" />
 
-            {}
+            { }
             <div className="toolbar-group">
               <button className="btn btn-icon" onClick={() => onZoomChange(Math.max(0.25, zoomLevel - 0.25))} title="Zoom Out (-)">
                 <ZoomOut size={16} />
@@ -310,7 +310,7 @@ const Toolbar = ({
 
             <div className="toolbar-divider" />
 
-            {}
+            { }
             <div className="toolbar-group" ref={pageMenuRef} style={{ position: 'relative' }}>
               <button className="btn btn-tool" onClick={() => setShowPageMenu(!showPageMenu)} title="Page Options">
                 <FilePlus size={16} />
