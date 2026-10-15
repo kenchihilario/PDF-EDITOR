@@ -26,6 +26,7 @@ function App() {
   const [mode, setMode] = useState('select');
   const [currentFont, setCurrentFont] = useState('Helvetica');
   const [currentFontSize, setCurrentFontSize] = useState(16);
+  const [currentLetterSpacing, setCurrentLetterSpacing] = useState(0);
   const [currentBold, setCurrentBold] = useState(false);
   const [currentItalic, setCurrentItalic] = useState(false);
   const [currentUnderline, setCurrentUnderline] = useState(false);
@@ -179,6 +180,7 @@ function App() {
 
   const updateTextFont = (fontFamily) => { setCurrentFont(fontFamily); updateSelectedText({ fontFamily }); };
   const updateFontSize = (fontSize) => { setCurrentFontSize(fontSize); updateSelectedText({ fontSize }); };
+  const updateLetterSpacing = (letterSpacing) => { setCurrentLetterSpacing(letterSpacing); updateSelectedText({ letterSpacing }); };
   const updateBold = (isBold) => { setCurrentBold(isBold); updateSelectedText({ isBold }); };
   const updateItalic = (isItalic) => { setCurrentItalic(isItalic); updateSelectedText({ isItalic }); };
   const updateUnderline = (isUnderline) => { setCurrentUnderline(isUnderline); updateSelectedText({ isUnderline }); };
@@ -463,6 +465,8 @@ function App() {
         onFontChange={updateTextFont}
         currentFontSize={currentFontSize}
         onFontSizeChange={updateFontSize}
+        currentLetterSpacing={currentLetterSpacing}
+        onLetterSpacingChange={updateLetterSpacing}
         currentBold={currentBold}
         onBoldChange={updateBold}
         currentItalic={currentItalic}
@@ -540,6 +544,8 @@ function App() {
                 currentFont={currentFont}
                 currentFontSize={currentFontSize}
                 onFontSizeChange={updateFontSize}
+                currentLetterSpacing={currentLetterSpacing}
+                onLetterSpacingChange={updateLetterSpacing}
                 currentBold={currentBold}
                 currentItalic={currentItalic}
                 currentUnderline={currentUnderline}

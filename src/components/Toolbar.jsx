@@ -15,6 +15,7 @@ const ZOOM_LEVELS = [0.5, 0.75, 1, 1.25, 1.5, 2, 3];
 const Toolbar = ({
   mode, setMode, onUpload, onDownload, hasDocument,
   selectedTextId, currentFont, onFontChange, currentFontSize, onFontSizeChange,
+  currentLetterSpacing, onLetterSpacingChange,
   currentBold, onBoldChange, currentItalic, onItalicChange,
   currentUnderline, onUnderlineChange, currentAlignment, onAlignmentChange,
   currentColor, onColorChange, onUndo, canUndo, onRedo, canRedo, onAddImage,
@@ -217,6 +218,18 @@ const Toolbar = ({
                   min="8"
                   max="144"
                   title="Font Size"
+                />
+                <input
+                  type="number"
+                  className="toolbar-input font-size-input"
+                  value={currentLetterSpacing ?? 0}
+                  onChange={(e) => onLetterSpacingChange(Number(e.target.value))}
+                  min="-5"
+                  max="50"
+                  step="0.5"
+                  title="Letter Spacing"
+                  aria-label="Letter spacing"
+                  placeholder="Spacing"
                 />
               </div>
               <div className="toolbar-group">

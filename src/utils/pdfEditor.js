@@ -278,6 +278,8 @@ export const exportPdf = async (originalPdfBytes, annotations, scale = 1.5, page
         const color = hexToRgb(t.color || '#3b82f6');
         const rgbColor = rgb(color.r, color.g, color.b);
         const size = t.fontSize || 16;
+        const letterSpacing = (t.letterSpacing || 0) / SCALE;
+        const measureText = (text) => font.widthOfTextAtSize(text, size) + Math.max(0, text.length - 1) * letterSpacing;
 
         const wrapText = (text, maxWidth, font, size) => {
           if (!maxWidth) return text.split('\n');
@@ -288,7 +290,7 @@ export const exportPdf = async (originalPdfBytes, annotations, scale = 1.5, page
             let currentLine = '';
             for (const word of words) {
               const testLine = currentLine ? currentLine + ' ' + word : word;
-              const testWidth = font.widthOfTextAtSize(testLine, size);
+              const testWidth = measureText(testLine);
               if (testWidth > maxWidth && currentLine) {
                 wrappedLines.push(currentLine);
                 currentLine = word;
@@ -307,12 +309,12 @@ export const exportPdf = async (originalPdfBytes, annotations, scale = 1.5, page
 
         let maxTextWidth = 0;
         for (const line of lines) {
-          maxTextWidth = Math.max(maxTextWidth, font.widthOfTextAtSize(line, size));
+          maxTextWidth = Math.max(maxTextWidth, measureText(line));
         }
 
         for (let j = 0; j < lines.length; j++) {
           const line = lines[j];
-          const textWidth = font.widthOfTextAtSize(line, size);
+          const textWidth = measureText(line);
           const lineIndexFromBottom = (lines.length - 1) - j;
           const currentPdfY = pdfYBase + (lineIndexFromBottom * lineHeight);
 
@@ -320,13 +322,11 @@ export const exportPdf = async (originalPdfBytes, annotations, scale = 1.5, page
           if (t.alignment === 'center') offsetX = (maxTextWidth - textWidth) / 2;
           else if (t.alignment === 'right') offsetX = maxTextWidth - textWidth;
 
-          page.drawText(line, {
-            x: pdfXBase + offsetX,
-            y: currentPdfY,
-            size,
-            font,
-            color: rgbColor,
-          });
+          let charX = pdfXBase + offsetX;
+          for (const character of line) {
+            page.drawText(character, { x: charX, y: currentPdfY, size, font, color: rgbColor });
+            charX += font.widthOfTextAtSize(character, size) + letterSpacing;
+          }
 
           if (t.isUnderline) {
             const underlineY = currentPdfY - (size * 0.1);

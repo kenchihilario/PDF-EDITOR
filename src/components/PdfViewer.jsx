@@ -93,7 +93,7 @@ const sampleCanvasColor = (canvas, textX, textY, textWidth, textHeight, scale) =
 const PdfViewer = ({
   pdfDoc, pageNumber, mode, annotations, setAnnotations, commitAnnotations,
   selectedTextId, setSelectedTextId, currentColor, currentFont, currentFontSize,
-  onFontSizeChange, currentBold, currentItalic, currentUnderline, currentAlignment,
+  onFontSizeChange, currentLetterSpacing, onLetterSpacingChange, currentBold, currentItalic, currentUnderline, currentAlignment,
 
   scale,
   shapeType,
@@ -480,7 +480,7 @@ const PdfViewer = ({
           ...annotations,
           texts: [...(annotations.texts || []), {
             id: newId, text: currentText, x: textInputPos.x, y: textInputPos.y,
-            fontFamily: currentFont, fontSize: currentFontSize, color: currentColor,
+            fontFamily: currentFont, fontSize: currentFontSize, letterSpacing: currentLetterSpacing || 0, color: currentColor,
             isBold: currentBold, isItalic: currentItalic, isUnderline: currentUnderline, alignment: currentAlignment
           }]
         });
@@ -549,6 +549,7 @@ const PdfViewer = ({
 
       if (onFontChange && textItem.fontFamily) onFontChange(textItem.fontFamily);
       if (onFontSizeChange && textItem.fontSize) onFontSizeChange(textItem.fontSize);
+      if (onLetterSpacingChange) onLetterSpacingChange(textItem.letterSpacing || 0);
       if (onBoldChange) onBoldChange(!!textItem.isBold);
       if (onItalicChange) onItalicChange(!!textItem.isItalic);
       if (onUnderlineChange) onUnderlineChange(!!textItem.isUnderline);
@@ -918,6 +919,7 @@ const PdfViewer = ({
                   id: newTextId, text: item.str, x, y,
                   fontFamily: detected.fontFamily,
                   fontSize: detected.fontSize,
+                  letterSpacing: 0,
                   color: detectedColor,
                   isBold: detected.isBold,
                   isItalic: detected.isItalic,
@@ -927,6 +929,7 @@ const PdfViewer = ({
                 };
 
                 onFontSizeChange(detected.fontSize);
+                if (onLetterSpacingChange) onLetterSpacingChange(0);
                 if (onFontChange) onFontChange(detected.fontFamily);
                 if (onBoldChange) onBoldChange(detected.isBold);
                 if (onItalicChange) onItalicChange(detected.isItalic);
@@ -1103,6 +1106,7 @@ const PdfViewer = ({
                 color: t.color || '#3b82f6',
                 fontFamily: getFontFamilyCSS(t.fontFamily),
                 fontSize: `${(t.fontSize || 16) * scale}px`,
+                letterSpacing: `${(t.letterSpacing || 0) * scale}px`,
                 fontWeight: t.isBold ? 'bold' : 'normal',
                 fontStyle: t.isItalic ? 'italic' : 'normal',
                 textDecoration: t.isUnderline ? 'underline' : 'none',
@@ -1131,6 +1135,7 @@ const PdfViewer = ({
           const inputColor = editingText ? editingText.color : currentColor;
           const inputFont = editingText ? getFontFamilyCSS(editingText.fontFamily) : getFontFamilyCSS(currentFont);
           const inputFontSize = editingText ? editingText.fontSize : currentFontSize;
+          const inputLetterSpacing = editingText ? editingText.letterSpacing || 0 : currentLetterSpacing || 0;
           const inputBold = editingText ? editingText.isBold : currentBold;
           const inputItalic = editingText ? editingText.isItalic : currentItalic;
           const inputUnderline = editingText ? editingText.isUnderline : currentUnderline;
@@ -1151,6 +1156,7 @@ const PdfViewer = ({
                 borderRadius: '4px', padding: '4px',
                 color: inputColor, fontFamily: inputFont,
                 fontSize: `${(inputFontSize || 16) * scale}px`,
+                letterSpacing: `${inputLetterSpacing * scale}px`,
                 fontWeight: inputBold ? 'bold' : 'normal',
                 fontStyle: inputItalic ? 'italic' : 'normal',
                 textDecoration: inputUnderline ? 'underline' : 'none',
