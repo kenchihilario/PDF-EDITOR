@@ -13,6 +13,8 @@ const STAMPS = [
   { id: 'sign-here', label: 'SIGN HERE', color: '#7c3aed', bg: 'rgba(124, 58, 237, 0.12)', borderColor: '#7c3aed' },
   { id: 'urgent', label: 'URGENT', color: '#ea580c', bg: 'rgba(234, 88, 12, 0.12)', borderColor: '#ea580c' },
   { id: 'copy', label: 'COPY', color: '#6b7280', bg: 'rgba(107, 114, 128, 0.12)', borderColor: '#6b7280' },
+  { id: 'check', label: '✓', color: '#16a34a', bg: 'rgba(22, 163, 74, 0.12)', borderColor: '#16a34a' },
+  { id: 'x-mark', label: '✕', color: '#dc2626', bg: 'rgba(220, 38, 38, 0.12)', borderColor: '#dc2626' },
 ];
 
 const StampPicker = ({ onSelect, onClose }) => {

@@ -457,6 +457,18 @@ const PdfViewer = ({
     }
   };
 
+  const handlePointerCancel = () => {
+    setIsDrawing(false);
+    setCurrentPath(null);
+    setHighlightStart(null);
+    setCurrentHighlight(null);
+    setShapeStart(null);
+    setCurrentShape(null);
+    setDraggingId(null);
+    setResizingId(null);
+    setCropStart(null);
+  };
+
   const saveText = () => {
     if (currentText.trim()) {
       if (editingTextId) {
@@ -532,6 +544,7 @@ const PdfViewer = ({
     }
     if (mode === 'select') {
       e.stopPropagation();
+      e.currentTarget.setPointerCapture?.(e.pointerId);
       setSelectedTextId(textItem.id);
 
       if (onFontChange && textItem.fontFamily) onFontChange(textItem.fontFamily);
@@ -777,7 +790,7 @@ const PdfViewer = ({
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
-        onPointerLeave={handlePointerUp}
+        onPointerCancel={handlePointerCancel}
         style={{
           pointerEvents: ['select', 'draw', 'text', 'erase', 'highlight', 'shape', 'stamp', 'signature', 'comment'].includes(mode) ? 'auto' : 'none',
           userSelect: mode === 'select' || mode === 'text' ? 'auto' : 'none',
