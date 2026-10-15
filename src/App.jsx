@@ -14,6 +14,62 @@ import StampPicker from './components/StampPicker';
 import CommentPanel from './components/CommentPanel';
 import { exportPdf } from './utils/pdfEditor';
 
+const getPdfDraftId = async (arrayBuffer) => {
+  const bytes = new Uint8Array(arrayBuffer);
+  if (globalThis.crypto?.subtle) {
+    try {
+      const digest = await globalThis.crypto.subtle.digest('SHA-256', bytes);
+      return Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, '0')).join('');
+    } catch {
+      // Use the deterministic fallback below when SubtleCrypto is unavailable.
+    }
+  }
+
+  let hashA = 0x811c9dc5;
+  let hashB = 0x9e3779b9;
+  for (const byte of bytes) {
+    hashA = Math.imul(hashA ^ byte, 0x01000193) >>> 0;
+    hashB = Math.imul(hashB ^ byte, 0x85ebca6b) >>> 0;
+  }
+  return `${bytes.length.toString(16)}-${hashA.toString(16)}-${hashB.toString(16)}`;
+};
+
+const rescaleAnnotationPage = (pageAnnotations, ratio) => {
+  if (!pageAnnotations) return pageAnnotations;
+  const scaleBox = (item) => ({
+    ...item,
+    ...(Number.isFinite(item.x) ? { x: item.x * ratio } : {}),
+    ...(Number.isFinite(item.y) ? { y: item.y * ratio } : {}),
+    ...(Number.isFinite(item.width) ? { width: item.width * ratio } : {}),
+    ...(Number.isFinite(item.height) ? { height: item.height * ratio } : {}),
+  });
+
+  return {
+    ...pageAnnotations,
+    texts: pageAnnotations.texts?.map(scaleBox),
+    images: pageAnnotations.images?.map(scaleBox),
+    stamps: pageAnnotations.stamps?.map(scaleBox),
+    signatures: pageAnnotations.signatures?.map(scaleBox),
+    comments: pageAnnotations.comments?.map(scaleBox),
+    marks: pageAnnotations.marks?.map(scaleBox),
+    erasures: pageAnnotations.erasures?.map(scaleBox),
+    highlights: pageAnnotations.highlights?.map(scaleBox),
+    shapes: pageAnnotations.shapes?.map(shape => ({
+      ...scaleBox(shape),
+      ...(Number.isFinite(shape.startX) ? { startX: shape.startX * ratio } : {}),
+      ...(Number.isFinite(shape.startY) ? { startY: shape.startY * ratio } : {}),
+      ...(Number.isFinite(shape.endX) ? { endX: shape.endX * ratio } : {}),
+      ...(Number.isFinite(shape.endY) ? { endY: shape.endY * ratio } : {}),
+      ...(Number.isFinite(shape.strokeWidth) ? { strokeWidth: shape.strokeWidth * ratio } : {}),
+    })),
+    paths: pageAnnotations.paths?.map(path => ({
+      ...path,
+      width: Number.isFinite(path.width) ? path.width * ratio : path.width,
+      points: path.points?.map(point => ({ ...point, x: point.x * ratio, y: point.y * ratio })),
+    })),
+  };
+};
+
 function App() {
 
   const [pdfFile, setPdfFile] = useState(null);
@@ -33,14 +89,18 @@ function App() {
   const [currentAlignment, setCurrentAlignment] = useState('left');
   const [currentColor, setCurrentColor] = useState('#ef4444');
   const [selectedTextId, setSelectedTextId] = useState(null);
+  const [copiedText, setCopiedText] = useState(null);
   const [strokeWidth, setStrokeWidth] = useState(3);
   const [shapeType, setShapeType] = useState('rectangle');
   const [markType, setMarkType] = useState('check');
   const [highlightColor, setHighlightColor] = useState('#ffff00');
 
   const [zoomLevel, setZoomLevel] = useState(1.5);
+  const previousZoomRef = useRef(1.5);
 
   const [annotations, setAnnotations] = useState({});
+  const [draftId, setDraftId] = useState(null);
+  const [draftStatus, setDraftStatus] = useState('');
   const [history, setHistory] = useState([]);
   const [redoHistory, setRedoHistory] = useState([]);
 
@@ -59,19 +119,39 @@ function App() {
 
   const loadPdf = useCallback(async (arrayBuffer) => {
     setIsLoading(true);
+    setDraftId(null);
     setPdfFile(arrayBuffer.slice(0));
     try {
+      const nextDraftId = await getPdfDraftId(arrayBuffer.slice(0));
+      let savedDraft = null;
+      try {
+        const rawDraft = localStorage.getItem(`pdfeditor:draft:${nextDraftId}`);
+        if (rawDraft) savedDraft = JSON.parse(rawDraft);
+      } catch (draftError) {
+        console.warn('Could not read this browser draft:', draftError);
+      }
+
       const loadingTask = pdfjsLib.getDocument({ data: new Uint8Array(arrayBuffer) });
       const doc = await loadingTask.promise;
+      const savedZoom = Number(savedDraft?.zoomLevel) || zoomLevel;
+      const restoredAnnotations = savedDraft?.annotations || {};
+      const annotationsAtCurrentZoom = savedZoom === zoomLevel
+        ? restoredAnnotations
+        : Object.fromEntries(Object.entries(restoredAnnotations).map(([page, pageAnnotations]) => [
+          page,
+          rescaleAnnotationPage(pageAnnotations, zoomLevel / savedZoom),
+        ]));
       setPdfDoc(doc);
       setNumPages(doc.numPages);
       setCurrentPage(1);
-      setAnnotations({});
+      setAnnotations(annotationsAtCurrentZoom);
       setHistory([]);
       setRedoHistory([]);
       setSelectedTextId(null);
-      setPageRotations({});
+      setPageRotations(savedDraft?.pageRotations || {});
       setSearchHighlights([]);
+      setDraftId(nextDraftId);
+      setDraftStatus(savedDraft ? 'restored' : 'saving');
 
       const thumbs = [];
       for (let i = 1; i <= doc.numPages; i++) {
@@ -85,7 +165,40 @@ function App() {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [zoomLevel]);
+
+  useEffect(() => {
+    if (!draftId) return undefined;
+    const timeoutId = setTimeout(() => {
+      try {
+        localStorage.setItem(`pdfeditor:draft:${draftId}`, JSON.stringify({
+          version: 1,
+          annotations,
+          pageRotations,
+          zoomLevel,
+          updatedAt: Date.now(),
+        }));
+        setDraftStatus('saved');
+      } catch (error) {
+        console.error('Could not save this browser draft:', error);
+        setDraftStatus('unavailable');
+      }
+    }, 500);
+    return () => clearTimeout(timeoutId);
+  }, [draftId, annotations, pageRotations, zoomLevel]);
+
+  useEffect(() => {
+    const previousZoom = previousZoomRef.current;
+    if (previousZoom === zoomLevel || previousZoom <= 0) return;
+    const ratio = zoomLevel / previousZoom;
+    const rescaleSnapshot = (snapshot) => Object.fromEntries(
+      Object.entries(snapshot).map(([page, pageAnnotations]) => [page, rescaleAnnotationPage(pageAnnotations, ratio)])
+    );
+    setAnnotations(previous => rescaleSnapshot(previous));
+    setHistory(previous => previous.map(rescaleSnapshot));
+    setRedoHistory(previous => previous.map(rescaleSnapshot));
+    previousZoomRef.current = zoomLevel;
+  }, [zoomLevel]);
 
   const handleFileUpload = async (e) => {
     const file = e.target.files[0];
@@ -124,7 +237,7 @@ function App() {
     }
   };
 
-  const handleDownload = async () => {
+  const handleDownload = useCallback(async () => {
     if (!pdfFile) return;
     setIsLoading(true);
     setSelectedTextId(null);
@@ -142,33 +255,37 @@ function App() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [pdfFile, annotations, zoomLevel, pageRotations]);
 
   const updateAnnotations = (pageNum, newAnnotations) => {
+    setDraftStatus('saving');
     setAnnotations(prev => ({ ...prev, [pageNum]: newAnnotations }));
   };
 
-  const commitAnnotations = (pageNum, newAnnotations) => {
+  const commitAnnotations = useCallback((pageNum, newAnnotations) => {
+    setDraftStatus('saving');
     setHistory(prev => [...prev, annotations]);
     setRedoHistory([]);
     setAnnotations(prev => ({ ...prev, [pageNum]: newAnnotations }));
-  };
+  }, [annotations]);
 
-  const handleUndo = () => {
+  const handleUndo = useCallback(() => {
     if (history.length > 0) {
+      setDraftStatus('saving');
       setRedoHistory(prev => [...prev, annotations]);
       setAnnotations(history[history.length - 1]);
       setHistory(prev => prev.slice(0, -1));
     }
-  };
+  }, [history, annotations]);
 
-  const handleRedo = () => {
+  const handleRedo = useCallback(() => {
     if (redoHistory.length > 0) {
+      setDraftStatus('saving');
       setHistory(prev => [...prev, annotations]);
       setAnnotations(redoHistory[redoHistory.length - 1]);
       setRedoHistory(prev => prev.slice(0, -1));
     }
-  };
+  }, [redoHistory, annotations]);
 
   const updateSelectedText = (updates) => {
     if (!selectedTextId || !pdfDoc) return;
@@ -177,6 +294,23 @@ function App() {
     const newTexts = currentAnn.texts?.map(t => t.id === selectedTextId ? { ...t, ...updates } : t);
     if (newTexts) commitAnnotations(currentPage, { ...currentAnn, texts: newTexts });
   };
+
+  const copySelectedText = useCallback(() => {
+    const text = annotations[currentPage]?.texts?.find(item => item.id === selectedTextId);
+    if (!text) return;
+    setCopiedText({ ...text });
+    navigator.clipboard?.writeText(text.text || '').catch(() => {});
+  }, [annotations, currentPage, selectedTextId]);
+
+  const pasteCopiedText = useCallback(() => {
+    if (!copiedText || !pdfDoc) return;
+    const id = `text-${Date.now()}`;
+    const pastedText = { ...copiedText, id, x: copiedText.x + 24, y: copiedText.y + 24 };
+    const currentAnn = annotations[currentPage] || { texts: [] };
+    commitAnnotations(currentPage, { ...currentAnn, texts: [...(currentAnn.texts || []), pastedText] });
+    setSelectedTextId(id);
+    setMode('select');
+  }, [annotations, commitAnnotations, copiedText, currentPage, pdfDoc]);
 
   const updateTextFont = (fontFamily) => { setCurrentFont(fontFamily); updateSelectedText({ fontFamily }); };
   const updateFontSize = (fontSize) => { setCurrentFontSize(fontSize); updateSelectedText({ fontSize }); };
@@ -393,6 +527,16 @@ function App() {
       if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
 
       if (e.ctrlKey || e.metaKey) {
+        if (e.key.toLowerCase() === 'c' && selectedTextId && annotations[currentPage]?.texts?.some(item => item.id === selectedTextId)) {
+          e.preventDefault();
+          copySelectedText();
+          return;
+        }
+        if (e.key.toLowerCase() === 'v' && copiedText && pdfDoc) {
+          e.preventDefault();
+          pasteCopiedText();
+          return;
+        }
         if (e.key === 'z') { e.preventDefault(); handleUndo(); }
         else if (e.key === 'y') { e.preventDefault(); handleRedo(); }
         else if (e.key === 'f') { e.preventDefault(); setShowSearch(prev => !prev); }
@@ -435,7 +579,7 @@ function App() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [pdfDoc, currentPage, numPages, annotations, history, redoHistory, pdfFile, zoomLevel]);
+  }, [pdfDoc, currentPage, numPages, annotations, history, redoHistory, pdfFile, zoomLevel, selectedTextId, copiedText, copySelectedText, pasteCopiedText, handleUndo, handleRedo, handleDownload]);
 
   const emptyAnn = { paths: [], texts: [], images: [], erasures: [], highlights: [], shapes: [], marks: [], stamps: [], signatures: [], comments: [] };
 
@@ -466,6 +610,10 @@ function App() {
         onFontSizeChange={updateFontSize}
         currentLetterSpacing={currentLetterSpacing}
         onLetterSpacingChange={updateLetterSpacing}
+        onCopyText={copySelectedText}
+        onPasteText={pasteCopiedText}
+        canCopyText={!!annotations[currentPage]?.texts?.some(item => item.id === selectedTextId)}
+        canPasteText={!!copiedText}
         currentBold={currentBold}
         onBoldChange={updateBold}
         currentItalic={currentItalic}
@@ -613,6 +761,9 @@ function App() {
           <div className="status-bar-left">
             <span className="status-item">Page {currentPage} of {numPages}</span>
             <span className="status-item">Zoom: {Math.round(zoomLevel * 100)}%</span>
+            <span className="status-item" title="Draft is saved separately in this browser for this PDF">
+              {draftStatus === 'saving' ? 'Saving draft…' : draftStatus === 'unavailable' ? 'Draft storage unavailable' : draftStatus === 'restored' ? 'Draft restored' : draftStatus === 'saved' ? 'Draft saved in this browser' : ''}
+            </span>
             {pageRotations[currentPage] ? <span className="status-item">Rotation: {pageRotations[currentPage]}°</span> : null}
           </div>
           <div className="status-bar-right">

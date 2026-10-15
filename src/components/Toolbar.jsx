@@ -3,7 +3,7 @@ import {
   Upload, Download, PenTool, Type, MousePointer2, FileText,
   Undo2, Redo2, Image as ImageIcon, Eraser, Bold, Italic, Underline,
   AlignLeft, AlignCenter, AlignRight, AlignJustify,
-  ZoomIn, ZoomOut, ChevronLeft, ChevronRight,
+  ZoomIn, ZoomOut, ChevronLeft, ChevronRight, ClipboardPaste,
   Highlighter, Square, Circle, Minus, MoveRight,
   Stamp, PenLine, MessageSquare, Search,
   RotateCw, RotateCcw, Trash2, Copy, Plus, FilePlus,
@@ -16,6 +16,7 @@ const Toolbar = ({
   mode, setMode, onUpload, onDownload, hasDocument,
   selectedTextId, currentFont, onFontChange, currentFontSize, onFontSizeChange,
   currentLetterSpacing, onLetterSpacingChange,
+  onCopyText, onPasteText, canCopyText, canPasteText,
   currentBold, onBoldChange, currentItalic, onItalicChange,
   currentUnderline, onUnderlineChange, currentAlignment, onAlignmentChange,
   currentColor, onColorChange, onUndo, canUndo, onRedo, canRedo, onAddImage,
@@ -71,19 +72,19 @@ const Toolbar = ({
         <div className="toolbar-center">
           { }
           <div className="toolbar-group">
-            <button className={`btn btn-tool ${mode === 'select' ? 'active' : ''}`} onClick={() => setMode('select')} title="Select & Move (V)">
+            <button className={`btn btn-tool ${mode === 'select' ? 'active' : ''}`} onClick={() => setMode('select')} data-tooltip="Select and move (V)" aria-label="Select and move (V)">
               <MousePointer2 size={16} />
             </button>
-            <button className={`btn btn-tool ${mode === 'text' ? 'active' : ''}`} onClick={() => setMode('text')} title="Add Text (T)">
+            <button className={`btn btn-tool ${mode === 'text' ? 'active' : ''}`} onClick={() => setMode('text')} data-tooltip="Add text (T)" aria-label="Add text (T)">
               <Type size={16} />
             </button>
-            <button className={`btn btn-tool ${mode === 'draw' ? 'active' : ''}`} onClick={() => setMode('draw')} title="Free Draw (D)">
+            <button className={`btn btn-tool ${mode === 'draw' ? 'active' : ''}`} onClick={() => setMode('draw')} data-tooltip="Free draw (D)" aria-label="Free draw (D)">
               <PenTool size={16} />
             </button>
-            <button className={`btn btn-tool ${mode === 'highlight' ? 'active' : ''}`} onClick={() => setMode('highlight')} title="Highlighter (H)">
+            <button className={`btn btn-tool ${mode === 'highlight' ? 'active' : ''}`} onClick={() => setMode('highlight')} data-tooltip="Highlighter (H)" aria-label="Highlighter (H)">
               <Highlighter size={16} />
             </button>
-            <button className={`btn btn-tool ${mode === 'erase' ? 'active' : ''}`} onClick={() => setMode('erase')} title="Eraser (E)">
+            <button className={`btn btn-tool ${mode === 'erase' ? 'active' : ''}`} onClick={() => setMode('erase')} data-tooltip="Eraser (E)" aria-label="Eraser (E)">
               <Eraser size={16} />
             </button>
           </div>
@@ -98,7 +99,8 @@ const Toolbar = ({
                 if (mode !== 'shape') setMode('shape');
                 setShowShapeDropdown(!showShapeDropdown);
               }}
-              title="Shapes (S)"
+              data-tooltip="Shapes (S)"
+              aria-label="Shapes (S)"
             >
               {shapeIcons[shapeType] || <Square size={16} />}
               <ChevronDown size={10} style={{ marginLeft: -2 }} />
@@ -130,16 +132,17 @@ const Toolbar = ({
 
           { }
           <div className="toolbar-group">
-            <button className={`btn btn-tool ${mode === 'stamp' ? 'active' : ''}`} onClick={onOpenStampPicker} title="Stamps">
+            <button className={`btn btn-tool ${mode === 'stamp' ? 'active' : ''}`} onClick={onOpenStampPicker} data-tooltip="Stamps" aria-label="Stamps">
               <Stamp size={16} />
             </button>
-            <button className={`btn btn-tool ${mode === 'signature' ? 'active' : ''}`} onClick={onOpenSignaturePad} title="Signature">
+            <button className={`btn btn-tool ${mode === 'signature' ? 'active' : ''}`} onClick={onOpenSignaturePad} data-tooltip="Signature" aria-label="Signature">
               <PenLine size={16} />
             </button>
-            <button className={`btn btn-tool ${mode === 'comment' ? 'active' : ''}`} onClick={() => setMode('comment')} title="Comment / Sticky Note (C)">
+            <button className={`btn btn-tool ${mode === 'comment' ? 'active' : ''}`} onClick={() => setMode('comment')} data-tooltip="Comment or sticky note (C)" aria-label="Comment or sticky note (C)">
               <MessageSquare size={16} />
             </button>
-            <label className="btn btn-tool" title="Add Image">
+            <label className="btn btn-tool" data-tooltip="Add image">
+              <span className="sr-only">Add image</span>
               <ImageIcon size={16} />
               <input
                 type="file"
@@ -234,8 +237,10 @@ const Toolbar = ({
                 />
               </div>
               <div className="toolbar-group">
-                <button className={`btn btn-tool ${mode === 'mark' && markType === 'check' ? 'active' : ''}`} onClick={() => onMarkTypeChange('check')} title="Place a resizable check mark in an answer box" style={{ fontSize: 18, fontWeight: 700, padding: '2px 7px' }}>✓</button>
-                <button className={`btn btn-tool ${mode === 'mark' && markType === 'x' ? 'active' : ''}`} onClick={() => onMarkTypeChange('x')} title="Place a resizable X mark in an answer box" style={{ fontSize: 18, fontWeight: 700, padding: '2px 7px' }}>✕</button>
+                <button className={`btn btn-tool ${mode === 'mark' && markType === 'check' ? 'active' : ''}`} onClick={() => onMarkTypeChange('check')} data-tooltip="Place a check mark" aria-label="Place a check mark" style={{ fontSize: 18, fontWeight: 700, padding: '2px 7px' }}>✓</button>
+                <button className={`btn btn-tool ${mode === 'mark' && markType === 'x' ? 'active' : ''}`} onClick={() => onMarkTypeChange('x')} data-tooltip="Place an X mark" aria-label="Place an X mark" style={{ fontSize: 18, fontWeight: 700, padding: '2px 7px' }}>✕</button>
+                <button className="btn btn-tool" onClick={onCopyText} disabled={!canCopyText} data-tooltip="Copy selected text (Ctrl+C)" aria-label="Copy selected text (Ctrl+C)"><Copy size={14} /></button>
+                <button className="btn btn-tool" onClick={onPasteText} disabled={!canPasteText} data-tooltip="Paste copied text (Ctrl+V)" aria-label="Paste copied text (Ctrl+V)"><ClipboardPaste size={14} /></button>
               </div>
               <div className="toolbar-group">
                 <button className={`btn btn-tool ${currentBold ? 'active' : ''}`} onClick={() => onBoldChange(!currentBold)} title="Bold (Ctrl+B)" style={{ padding: '5px' }}>

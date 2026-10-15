@@ -1191,6 +1191,52 @@ input[type="color"]:hover {
   z-index: 100;
 }
 
+.toolbar [data-tooltip] {
+  position: relative;
+}
+
+.toolbar [data-tooltip]::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  left: 50%;
+  top: calc(100% + 8px);
+  transform: translateX(-50%) translateY(-3px);
+  z-index: 300;
+  padding: 6px 9px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-xs);
+  background: rgba(10, 15, 12, 0.96);
+  color: var(--text-primary);
+  font-size: 0.72rem;
+  font-weight: 500;
+  line-height: 1.2;
+  white-space: nowrap;
+  box-shadow: var(--shadow-md);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 120ms ease, transform 120ms ease, visibility 120ms ease;
+}
+
+.toolbar [data-tooltip]:hover::after,
+.toolbar [data-tooltip]:focus-visible::after {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(-50%) translateY(0);
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 .context-menu {
   position: fixed;
   background: rgba(20, 30, 24, 0.95);

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 
 const getFontFamilyCSS = (fontName) => {
   switch (fontName) {
@@ -127,6 +127,9 @@ const PdfViewer = ({
 
   const [draggingId, setDraggingId] = useState(null);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+  const dragOriginAnnotationsRef = useRef(null);
+  const activePointerIdRef = useRef(null);
+  const cancelledDragRef = useRef(false);
   const [resizingId, setResizingId] = useState(null);
   const [resizeStart, setResizeStart] = useState(null);
 
@@ -144,8 +147,28 @@ const PdfViewer = ({
 
   const [pdfTextItems, setPdfTextItems] = useState([]);
 
+  const cancelTextDrag = useCallback(() => {
+    if (!dragOriginAnnotationsRef.current) return false;
+    setAnnotations(dragOriginAnnotationsRef.current);
+    dragOriginAnnotationsRef.current = null;
+    cancelledDragRef.current = true;
+    setDraggingId(null);
+    setResizingId(null);
+    setResizeStart(null);
+    if (activePointerIdRef.current !== null && containerRef.current?.hasPointerCapture?.(activePointerIdRef.current)) {
+      containerRef.current.releasePointerCapture(activePointerIdRef.current);
+    }
+    activePointerIdRef.current = null;
+    return true;
+  }, [setAnnotations]);
+
   useEffect(() => {
     const handleKeyDown = (e) => {
+      if (e.key === 'Escape' && cancelTextDrag()) {
+        e.preventDefault();
+        e.stopPropagation();
+        return;
+      }
       if ((e.key === 'Delete' || e.key === 'Backspace') && selectedTextId && !textInputVisible && !editingTextId) {
         const newTexts = annotations.texts?.filter(t => t.id !== selectedTextId) || [];
         const newImages = annotations.images?.filter(img => img.id !== selectedTextId) || [];
@@ -160,7 +183,7 @@ const PdfViewer = ({
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedTextId, textInputVisible, editingTextId, annotations, commitAnnotations, setSelectedTextId]);
+  }, [selectedTextId, textInputVisible, editingTextId, annotations, commitAnnotations, setSelectedTextId, cancelTextDrag]);
 
   useEffect(() => {
     let renderTask;
@@ -431,6 +454,12 @@ const PdfViewer = ({
   };
 
   const handlePointerUp = () => {
+    if (cancelledDragRef.current) {
+      cancelledDragRef.current = false;
+      dragOriginAnnotationsRef.current = null;
+      activePointerIdRef.current = null;
+      return;
+    }
     if (isDrawing && mode === 'draw' && currentPath && currentPath.points.length > 0) {
       setIsDrawing(false);
       commitAnnotations({
@@ -466,9 +495,12 @@ const PdfViewer = ({
       setCropStart(null);
       commitAnnotations(annotations);
     }
+    dragOriginAnnotationsRef.current = null;
+    activePointerIdRef.current = null;
   };
 
   const handlePointerCancel = () => {
+    cancelTextDrag();
     setIsDrawing(false);
     setCurrentPath(null);
     setHighlightStart(null);
@@ -570,6 +602,9 @@ const PdfViewer = ({
     }
     if (mode === 'select' || mode === 'text') {
       e.stopPropagation();
+      dragOriginAnnotationsRef.current = annotations;
+      activePointerIdRef.current = e.pointerId;
+      cancelledDragRef.current = false;
       containerRef.current?.setPointerCapture?.(e.pointerId);
       setSelectedTextId(textItem.id);
 
@@ -1154,8 +1189,8 @@ const PdfViewer = ({
                 fontStyle: t.isItalic ? 'italic' : 'normal',
                 textDecoration: t.isUnderline ? 'underline' : 'none',
                 textAlign: t.alignment || 'left',
-                pointerEvents: (mode === 'select' || mode === 'erase') ? 'auto' : 'none',
-                cursor: mode === 'select' ? 'move' : 'default',
+                pointerEvents: (mode === 'select' || mode === 'text' || mode === 'erase') ? 'auto' : 'none',
+                cursor: (mode === 'select' || mode === 'text') ? 'move' : 'default',
                 transform: 'translateY(-100%)',
                 whiteSpace: 'pre-wrap', wordBreak: 'break-word',
                 width: t.width ? `${t.width}px` : 'auto',
