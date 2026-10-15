@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import * as pdfjsLib from 'pdfjs-dist';
-import { Upload, Loader } from 'lucide-react';
+import { Upload, Loader, FolderOpen, Trash2, X } from 'lucide-react';
 
 import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.mjs?url';
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
@@ -32,6 +32,51 @@ const getPdfDraftId = async (arrayBuffer) => {
     hashB = Math.imul(hashB ^ byte, 0x85ebca6b) >>> 0;
   }
   return `${bytes.length.toString(16)}-${hashA.toString(16)}-${hashB.toString(16)}`;
+};
+
+const DRAFT_INDEX_KEY = 'pdfeditor:draft-index';
+const DRAFT_DB_NAME = 'pdfeditor-local-drafts';
+const openDraftDb = () => new Promise((resolve, reject) => {
+  if (!('indexedDB' in window)) return reject(new Error('Local draft files are unavailable'));
+  const request = indexedDB.open(DRAFT_DB_NAME, 1);
+  request.onupgradeneeded = () => request.result.createObjectStore('pdfs', { keyPath: 'id' });
+  request.onsuccess = () => resolve(request.result);
+  request.onerror = () => reject(request.error);
+});
+const saveDraftPdf = async (id, name, bytes) => {
+  const db = await openDraftDb();
+  await new Promise((resolve, reject) => {
+    const tx = db.transaction('pdfs', 'readwrite');
+    tx.objectStore('pdfs').put({ id, name, bytes: bytes.slice(0) });
+    tx.oncomplete = resolve;
+    tx.onerror = () => reject(tx.error);
+    tx.onabort = () => reject(tx.error);
+  });
+  db.close();
+};
+const readDraftPdf = async (id) => {
+  const db = await openDraftDb();
+  const item = await new Promise((resolve, reject) => {
+    const request = db.transaction('pdfs', 'readonly').objectStore('pdfs').get(id);
+    request.onsuccess = () => resolve(request.result || null);
+    request.onerror = () => reject(request.error);
+  });
+  db.close();
+  return item;
+};
+const deleteDraftPdf = async (id) => {
+  const db = await openDraftDb();
+  await new Promise((resolve, reject) => {
+    const tx = db.transaction('pdfs', 'readwrite');
+    tx.objectStore('pdfs').delete(id);
+    tx.oncomplete = resolve;
+    tx.onerror = () => reject(tx.error);
+  });
+  db.close();
+};
+const readDraftIndex = () => {
+  try { return JSON.parse(localStorage.getItem(DRAFT_INDEX_KEY) || '[]'); }
+  catch { return []; }
 };
 
 const rescaleAnnotationPage = (pageAnnotations, ratio) => {
@@ -101,6 +146,9 @@ function App() {
   const [annotations, setAnnotations] = useState({});
   const [draftId, setDraftId] = useState(null);
   const [draftStatus, setDraftStatus] = useState('');
+  const [drafts, setDrafts] = useState(() => readDraftIndex());
+  const [showDrafts, setShowDrafts] = useState(false);
+  const [pdfName, setPdfName] = useState('document.pdf');
   const [history, setHistory] = useState([]);
   const [redoHistory, setRedoHistory] = useState([]);
 
@@ -117,12 +165,19 @@ function App() {
   const [isDragOver, setIsDragOver] = useState(false);
   const fileInputRef = useRef(null);
 
-  const loadPdf = useCallback(async (arrayBuffer) => {
+  const loadPdf = useCallback(async (arrayBuffer, fileName) => {
     setIsLoading(true);
     setDraftId(null);
     setPdfFile(arrayBuffer.slice(0));
     try {
       const nextDraftId = await getPdfDraftId(arrayBuffer.slice(0));
+      const nextPdfName = fileName || pdfName || 'document.pdf';
+      setPdfName(nextPdfName);
+      try {
+        await saveDraftPdf(nextDraftId, nextPdfName, arrayBuffer);
+      } catch (storageError) {
+        console.warn('Could not store this PDF for the local drafts list:', storageError);
+      }
       let savedDraft = null;
       try {
         const rawDraft = localStorage.getItem(`pdfeditor:draft:${nextDraftId}`);
@@ -151,6 +206,10 @@ function App() {
       setPageRotations(savedDraft?.pageRotations || {});
       setSearchHighlights([]);
       setDraftId(nextDraftId);
+      const index = readDraftIndex();
+      const nextIndex = [{ id: nextDraftId, name: nextPdfName, updatedAt: Date.now() }, ...index.filter(item => item.id !== nextDraftId)];
+      try { localStorage.setItem(DRAFT_INDEX_KEY, JSON.stringify(nextIndex)); } catch (storageError) { console.warn('Could not index this local draft:', storageError); }
+      setDrafts(nextIndex);
       setDraftStatus(savedDraft ? 'restored' : 'saving');
 
       const thumbs = [];
@@ -165,7 +224,7 @@ function App() {
     } finally {
       setIsLoading(false);
     }
-  }, [zoomLevel]);
+  }, [zoomLevel, pdfName]);
 
   useEffect(() => {
     if (!draftId) return undefined;
@@ -178,6 +237,11 @@ function App() {
           zoomLevel,
           updatedAt: Date.now(),
         }));
+        const index = readDraftIndex();
+        const entry = index.find(item => item.id === draftId) || { id: draftId, name: pdfName };
+        const nextIndex = [{ ...entry, name: pdfName, updatedAt: Date.now() }, ...index.filter(item => item.id !== draftId)];
+        localStorage.setItem(DRAFT_INDEX_KEY, JSON.stringify(nextIndex));
+        setDrafts(nextIndex);
         setDraftStatus('saved');
       } catch (error) {
         console.error('Could not save this browser draft:', error);
@@ -193,7 +257,7 @@ function App() {
       window.removeEventListener('pagehide', saveDraft);
       window.removeEventListener('beforeunload', saveDraft);
     };
-  }, [draftId, annotations, pageRotations, zoomLevel]);
+  }, [draftId, annotations, pageRotations, zoomLevel, pdfName]);
 
   useEffect(() => {
     const previousZoom = previousZoomRef.current;
@@ -212,7 +276,35 @@ function App() {
     const file = e.target.files[0];
     if (file && file.type === 'application/pdf') {
       const arrayBuffer = await file.arrayBuffer();
-      await loadPdf(arrayBuffer);
+      await loadPdf(arrayBuffer, file.name);
+    }
+  };
+
+  const handleOpenLocalDraft = async (draft) => {
+    try {
+      const savedPdf = await readDraftPdf(draft.id);
+      if (!savedPdf?.bytes) throw new Error('The original PDF is no longer available in this browser. Open the original PDF to restore its draft.');
+      await loadPdf(savedPdf.bytes, savedPdf.name || draft.name);
+      setShowDrafts(false);
+    } catch (error) {
+      alert(error.message || 'Could not open this local draft.');
+    }
+  };
+
+  const handleDeleteLocalDraft = async (draft) => {
+    try {
+      localStorage.removeItem(`pdfeditor:draft:${draft.id}`);
+      const nextDrafts = drafts.filter(item => item.id !== draft.id);
+      localStorage.setItem(DRAFT_INDEX_KEY, JSON.stringify(nextDrafts));
+      setDrafts(nextDrafts);
+      await deleteDraftPdf(draft.id);
+      if (draftId === draft.id) {
+        setDraftId(null);
+        setDraftStatus('');
+      }
+    } catch (error) {
+      console.error('Could not delete local draft:', error);
+      alert('Could not delete this draft from this browser.');
     }
   };
 
@@ -238,7 +330,7 @@ function App() {
       const file = files[0];
       if (file.type === 'application/pdf') {
         const arrayBuffer = await file.arrayBuffer();
-        await loadPdf(arrayBuffer);
+        await loadPdf(arrayBuffer, file.name);
       } else {
         alert('Please drop a PDF file.');
       }
@@ -659,7 +751,32 @@ function App() {
         onDeletePage={handleDeletePage}
         onRotatePage={handleRotatePage}
         onDuplicatePage={handleDuplicatePage}
+        onOpenDrafts={() => { setDrafts(readDraftIndex()); setShowDrafts(true); }}
       />
+
+      {showDrafts && (
+        <div className="drafts-backdrop" onPointerDown={(e) => { if (e.target === e.currentTarget) setShowDrafts(false); }}>
+          <section className="drafts-dialog" role="dialog" aria-modal="true" aria-labelledby="drafts-title">
+            <header className="drafts-header">
+              <div><h2 id="drafts-title">Saved drafts</h2><p>Stored only in this browser on this PC.</p></div>
+              <button className="btn btn-tool" onClick={() => setShowDrafts(false)} aria-label="Close drafts"><X size={18} /></button>
+            </header>
+            {drafts.length ? (
+              <div className="drafts-list">
+                {drafts.map(draft => (
+                  <div className="draft-row" key={draft.id}>
+                    <button className="draft-open" onClick={() => handleOpenLocalDraft(draft)}>
+                      <strong>{draft.name || 'Untitled PDF'}</strong>
+                      <span>Last saved {draft.updatedAt ? new Date(draft.updatedAt).toLocaleString() : 'recently'}</span>
+                    </button>
+                    <button className="btn btn-tool draft-delete" onClick={() => handleDeleteLocalDraft(draft)} title="Delete local draft" aria-label={`Delete ${draft.name || 'draft'}`}><Trash2 size={16} /></button>
+                  </div>
+                ))}
+              </div>
+            ) : <p className="drafts-empty">No drafts saved in this browser yet. Open a PDF and edits will be saved here automatically.</p>}
+          </section>
+        </div>
+      )}
 
       {}
       {showSearch && pdfDoc && (

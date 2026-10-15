@@ -1372,6 +1372,47 @@ input[type="color"]:hover {
   background: rgba(16, 185, 129, 0.1);
 }
 
+.drafts-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(0, 0, 0, 0.58);
+}
+
+.drafts-dialog {
+  width: min(520px, 100%);
+  max-height: min(70vh, 640px);
+  overflow: auto;
+  padding: 20px;
+  color: var(--text-primary);
+  background: var(--bg-secondary, #1f2937);
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.4);
+}
+
+.drafts-header, .draft-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.drafts-header { margin-bottom: 14px; }
+.drafts-header h2 { margin: 0; font-size: 1.15rem; }
+.drafts-header p, .draft-open span, .drafts-empty { color: var(--text-secondary); font-size: 0.85rem; }
+.drafts-header p { margin: 5px 0 0; }
+.drafts-list { display: grid; gap: 8px; }
+.draft-row { padding: 8px; border: 1px solid var(--glass-border); border-radius: 8px; }
+.draft-open { flex: 1; min-width: 0; display: grid; gap: 4px; padding: 4px; text-align: left; color: inherit; background: transparent; border: 0; cursor: pointer; }
+.draft-open strong, .draft-open span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.draft-open:hover strong { color: var(--accent-primary); }
+.draft-delete:hover { color: #ef4444; }
+.drafts-empty { margin: 16px 0 4px; line-height: 1.5; }
+
 .dropdown-divider {
   height: 1px;
   background: var(--border-color);

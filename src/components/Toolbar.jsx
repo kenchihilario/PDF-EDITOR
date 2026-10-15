@@ -7,7 +7,7 @@ import {
   Highlighter, Square, Circle, Minus, MoveRight,
   Stamp, PenLine, MessageSquare, Search,
   RotateCw, RotateCcw, Trash2, Copy, Plus, FilePlus,
-  ChevronDown
+  ChevronDown, FolderOpen
 } from 'lucide-react';
 
 const ZOOM_LEVELS = [0.5, 0.75, 1, 1.25, 1.5, 2, 3];
@@ -33,7 +33,7 @@ const Toolbar = ({
   showComments,
   highlightColor, onHighlightColorChange,
 
-  onAddBlankPage, onDeletePage, onRotatePage, onDuplicatePage,
+  onAddBlankPage, onDeletePage, onRotatePage, onDuplicatePage, onOpenDrafts,
 }) => {
   const [showShapeDropdown, setShowShapeDropdown] = useState(false);
   const [showPageMenu, setShowPageMenu] = useState(false);
@@ -379,6 +379,11 @@ const Toolbar = ({
             }}
           />
         </label>
+
+        <button className="btn btn-secondary" onClick={onOpenDrafts} data-tooltip="Open locally saved drafts" aria-label="Open locally saved drafts">
+          <FolderOpen size={14} />
+          Drafts
+        </button>
 
         {hasDocument && (
           <button className="btn btn-primary" onClick={onDownload}>
