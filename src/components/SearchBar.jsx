@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Search, X, ChevronUp, ChevronDown } from 'lucide-react';
 
 const SearchBar = ({ pdfDoc, scale, onHighlightMatches, onNavigateToPage, onClose }) => {
@@ -7,28 +7,22 @@ const SearchBar = ({ pdfDoc, scale, onHighlightMatches, onNavigateToPage, onClos
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isSearching, setIsSearching] = useState(false);
   const inputRef = useRef(null);
+  const searchRunRef = useRef(0);
+  const onHighlightMatchesRef = useRef(onHighlightMatches);
+  const onNavigateToPageRef = useRef(onNavigateToPage);
+
+  useEffect(() => {
+    onHighlightMatchesRef.current = onHighlightMatches;
+    onNavigateToPageRef.current = onNavigateToPage;
+  }, [onHighlightMatches, onNavigateToPage]);
 
   useEffect(() => {
     inputRef.current?.focus();
   }, []);
 
-  useEffect(() => {
-    if (!query.trim()) {
-      setMatches([]);
-      setCurrentIndex(0);
-      onHighlightMatches([]);
-      return;
-    }
-
-    const timer = setTimeout(() => {
-      performSearch(query.trim());
-    }, 300);
-
-    return () => clearTimeout(timer);
-  }, [query, pdfDoc]);
-
-  const performSearch = async (searchText) => {
+  const performSearch = useCallback(async (searchText) => {
     if (!pdfDoc || !searchText) return;
+    const runId = ++searchRunRef.current;
     setIsSearching(true);
 
     const results = [];
@@ -38,6 +32,7 @@ const SearchBar = ({ pdfDoc, scale, onHighlightMatches, onNavigateToPage, onClos
       try {
         const page = await pdfDoc.getPage(i);
         const textContent = await page.getTextContent();
+        if (runId !== searchRunRef.current) return;
         const viewport = page.getViewport({ scale });
 
         for (const item of textContent.items) {
@@ -73,15 +68,31 @@ const SearchBar = ({ pdfDoc, scale, onHighlightMatches, onNavigateToPage, onClos
       }
     }
 
+    if (runId !== searchRunRef.current) return;
     setMatches(results);
     setCurrentIndex(results.length > 0 ? 0 : -1);
-    onHighlightMatches(results);
+    onHighlightMatchesRef.current(results);
     setIsSearching(false);
 
     if (results.length > 0) {
-      onNavigateToPage(results[0].pageNum);
+      onNavigateToPageRef.current(results[0].pageNum);
     }
-  };
+  }, [pdfDoc, scale]);
+
+  useEffect(() => {
+    const searchText = query.trim();
+    if (!searchText) {
+      searchRunRef.current += 1;
+      onHighlightMatchesRef.current([]);
+      return undefined;
+    }
+
+    const timer = setTimeout(() => performSearch(searchText), 300);
+    return () => {
+      clearTimeout(timer);
+      searchRunRef.current += 1;
+    };
+  }, [query, performSearch]);
 
   const goToMatch = (index) => {
     if (index < 0 || index >= matches.length) return;
@@ -110,6 +121,7 @@ const SearchBar = ({ pdfDoc, scale, onHighlightMatches, onNavigateToPage, onClos
   };
 
   const handleClose = () => {
+    searchRunRef.current += 1;
     onHighlightMatches([]);
     onClose();
   };
@@ -122,7 +134,14 @@ const SearchBar = ({ pdfDoc, scale, onHighlightMatches, onNavigateToPage, onClos
           ref={inputRef}
           type="text"
           value={query}
-          onChange={e => setQuery(e.target.value)}
+          onChange={e => {
+            searchRunRef.current += 1;
+            setMatches([]);
+            setCurrentIndex(0);
+            setIsSearching(false);
+            onHighlightMatchesRef.current([]);
+            setQuery(e.target.value);
+          }}
           onKeyDown={handleKeyDown}
           placeholder="Find in document..."
           className="search-input"

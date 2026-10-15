@@ -316,7 +316,7 @@ const PdfViewer = ({
         endX: x,
         endY: y,
       }));
-    } else if (draggingId && mode === 'select') {
+    } else if (draggingId && (mode === 'select' || mode === 'text')) {
 
       const newTexts = annotations.texts?.map(t => t.id === draggingId ? { ...t, x: x - dragOffset.x, y: y - dragOffset.y } : t);
       const newImages = annotations.images?.map(img => img.id === draggingId ? { ...img, x: x - dragOffset.x, y: y - dragOffset.y } : img);
@@ -568,9 +568,9 @@ const PdfViewer = ({
       if (selectedTextId === textItem.id) setSelectedTextId(null);
       return;
     }
-    if (mode === 'select') {
+    if (mode === 'select' || mode === 'text') {
       e.stopPropagation();
-      e.currentTarget.setPointerCapture?.(e.pointerId);
+      containerRef.current?.setPointerCapture?.(e.pointerId);
       setSelectedTextId(textItem.id);
 
       if (onFontChange && textItem.fontFamily) onFontChange(textItem.fontFamily);
@@ -773,7 +773,7 @@ const PdfViewer = ({
     </>
   );
 
-  const renderShapeSVG = (shape, isPreview = false) => {
+  const renderShapeSVG = (shape) => {
     const { type, x, y, width, height, endX, endY, color, strokeWidth: sw } = shape;
     const stroke = color || '#ef4444';
     const swVal = sw || 3;
@@ -875,7 +875,7 @@ const PdfViewer = ({
               )}
             </g>
           ))}
-          {currentShape && renderShapeSVG(currentShape, true)}
+          {currentShape && renderShapeSVG(currentShape)}
         </svg>
 
         {annotations.marks?.map(mark => {
@@ -932,7 +932,6 @@ const PdfViewer = ({
 
         {}
         {pdfTextItems.map((item, i) => {
-          const fontSize = item.transform[0] * scale;
           const x = item.transform[4] * scale;
           const y = viewport?.height ? viewport.height - (item.transform[5] * scale) : 0;
           const width = item.width * scale;
@@ -1099,8 +1098,8 @@ const PdfViewer = ({
               style={{
                 position: 'absolute', left: sig.x, top: sig.y,
                 width: sig.width, height: sig.height,
-                pointerEvents: (mode === 'select' || mode === 'erase') ? 'auto' : 'none',
-                cursor: mode === 'select' ? 'move' : 'default',
+                pointerEvents: (mode === 'select' || mode === 'text' || mode === 'erase') ? 'auto' : 'none',
+                cursor: (mode === 'select' || mode === 'text') ? 'move' : 'default',
                 border: isSelected ? '1px solid #3b82f6' : '1px solid transparent',
                 userSelect: 'none',
               }}

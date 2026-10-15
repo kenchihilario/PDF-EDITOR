@@ -65,7 +65,7 @@ export const exportPdf = async (originalPdfBytes, annotations, scale = 1.5, page
     
     if (!pageAnns) continue;
 
-    const { width, height } = page.getSize();
+    const { height } = page.getSize();
 
     const getCroppedImageBytes = async (img) => {
       return new Promise((resolve) => {
@@ -307,7 +307,7 @@ export const exportPdf = async (originalPdfBytes, annotations, scale = 1.5, page
         const letterSpacing = (t.letterSpacing || 0) / SCALE;
         const measureText = (text) => font.widthOfTextAtSize(text, size) + Math.max(0, text.length - 1) * letterSpacing;
 
-        const wrapText = (text, maxWidth, font, size) => {
+        const wrapText = (text, maxWidth) => {
           if (!maxWidth) return text.split('\n');
           const wrappedLines = [];
           const paragraphs = text.split('\n');
@@ -330,7 +330,7 @@ export const exportPdf = async (originalPdfBytes, annotations, scale = 1.5, page
         };
 
         const maxPdfWidth = t.width ? t.width / SCALE : null;
-        const lines = wrapText(t.text || '', maxPdfWidth, font, size);
+        const lines = wrapText(t.text || '', maxPdfWidth);
         const lineHeight = size * 1.2;
 
         let maxTextWidth = 0;

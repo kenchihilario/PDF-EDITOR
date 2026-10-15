@@ -7,7 +7,7 @@ import {
   Highlighter, Square, Circle, Minus, MoveRight,
   Stamp, PenLine, MessageSquare, Search,
   RotateCw, RotateCcw, Trash2, Copy, Plus, FilePlus,
-  Scissors, ChevronDown
+  ChevronDown
 } from 'lucide-react';
 
 const ZOOM_LEVELS = [0.5, 0.75, 1, 1.25, 1.5, 2, 3];

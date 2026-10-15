@@ -52,7 +52,6 @@ function App() {
   const [showSignaturePad, setShowSignaturePad] = useState(false);
   const [savedSignature, setSavedSignature] = useState(null);
   const [showStampPicker, setShowStampPicker] = useState(false);
-  const [selectedStamp, setSelectedStamp] = useState(null);
   const [showComments, setShowComments] = useState(false);
 
   const [isDragOver, setIsDragOver] = useState(false);
@@ -216,7 +215,6 @@ function App() {
   };
 
   const handleStampSelect = (stamp) => {
-    setSelectedStamp(stamp);
     setMode('stamp');
 
     const newId = 'stamp-' + Date.now();
