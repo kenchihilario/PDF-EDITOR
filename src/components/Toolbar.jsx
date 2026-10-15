@@ -24,6 +24,7 @@ const Toolbar = ({
   currentPage, numPages, onPageChange,
   strokeWidth, onStrokeWidthChange,
   shapeType, onShapeTypeChange,
+  markType, onMarkTypeChange,
   onToggleSearch,
   onOpenStampPicker,
   onOpenSignaturePad,
@@ -197,7 +198,7 @@ const Toolbar = ({
           </div>
 
           { }
-          {(mode === 'text' || (selectedTextId && mode === 'select' && !selectedTextId.startsWith('img-') && !selectedTextId.startsWith('stamp-') && !selectedTextId.startsWith('sig-'))) && (
+          {(mode === 'text' || mode === 'mark' || (selectedTextId && mode === 'select' && !selectedTextId.startsWith('img-') && !selectedTextId.startsWith('stamp-') && !selectedTextId.startsWith('sig-'))) && (
             <>
               <div className="toolbar-divider" />
               <div className="toolbar-group">
@@ -231,6 +232,10 @@ const Toolbar = ({
                   aria-label="Letter spacing"
                   placeholder="Spacing"
                 />
+              </div>
+              <div className="toolbar-group">
+                <button className={`btn btn-tool ${mode === 'mark' && markType === 'check' ? 'active' : ''}`} onClick={() => onMarkTypeChange('check')} title="Place a resizable check mark in an answer box" style={{ fontSize: 18, fontWeight: 700, padding: '2px 7px' }}>✓</button>
+                <button className={`btn btn-tool ${mode === 'mark' && markType === 'x' ? 'active' : ''}`} onClick={() => onMarkTypeChange('x')} title="Place a resizable X mark in an answer box" style={{ fontSize: 18, fontWeight: 700, padding: '2px 7px' }}>✕</button>
               </div>
               <div className="toolbar-group">
                 <button className={`btn btn-tool ${currentBold ? 'active' : ''}`} onClick={() => onBoldChange(!currentBold)} title="Bold (Ctrl+B)" style={{ padding: '5px' }}>

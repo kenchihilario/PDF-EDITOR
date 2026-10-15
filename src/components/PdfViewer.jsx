@@ -97,6 +97,7 @@ const PdfViewer = ({
 
   scale,
   shapeType,
+  markType = 'check',
   strokeWidth,
   highlightColor,
   savedSignature,
@@ -152,7 +153,8 @@ const PdfViewer = ({
         const newSignatures = annotations.signatures?.filter(s => s.id !== selectedTextId) || [];
         const newComments = annotations.comments?.filter(c => c.id !== selectedTextId) || [];
         const newShapes = annotations.shapes?.filter(s => s.id !== selectedTextId) || [];
-        commitAnnotations({ ...annotations, texts: newTexts, images: newImages, stamps: newStamps, signatures: newSignatures, comments: newComments, shapes: newShapes });
+        const newMarks = annotations.marks?.filter(m => m.id !== selectedTextId) || [];
+        commitAnnotations({ ...annotations, texts: newTexts, images: newImages, stamps: newStamps, signatures: newSignatures, comments: newComments, shapes: newShapes, marks: newMarks });
         setSelectedTextId(null);
       }
     };
@@ -241,6 +243,13 @@ const PdfViewer = ({
       setShapeStart({ x, y });
       setCurrentShape({ type: shapeType, x, y, width: 0, height: 0, color: currentColor, strokeWidth });
       setSelectedTextId(null);
+    } else if (mode === 'mark') {
+      const id = `mark-${Date.now()}`;
+      commitAnnotations({
+        ...annotations,
+        marks: [...(annotations.marks || []), { id, type: markType, x: x - 16, y: y - 16, width: 32, height: 32, color: currentColor || '#111827' }]
+      });
+      setSelectedTextId(id);
     } else if (mode === 'stamp') {
 
     } else if (mode === 'signature') {
@@ -328,7 +337,8 @@ const PdfViewer = ({
         }
         return s;
       });
-      setAnnotations({ ...annotations, texts: newTexts, images: newImages, stamps: newStamps, signatures: newSignatures, comments: newComments, shapes: newShapes });
+      const newMarks = annotations.marks?.map(mark => mark.id === draggingId ? { ...mark, x: x - dragOffset.x, y: y - dragOffset.y } : mark);
+      setAnnotations({ ...annotations, texts: newTexts, images: newImages, stamps: newStamps, signatures: newSignatures, comments: newComments, shapes: newShapes, marks: newMarks });
     } else if (resizeStart && resizeStart.isText && mode === 'select') {
       const dx = x - resizeStart.clickX;
       let newX = resizeStart.x;
@@ -393,7 +403,8 @@ const PdfViewer = ({
       const updateItem = (item) => item.id === resizingId ? { ...item, x: newX, y: newY, width: newWidth, height: newHeight } : item;
       const newImages = annotations.images?.map(updateItem);
       const newSignatures = annotations.signatures?.map(updateItem);
-      setAnnotations({ ...annotations, images: newImages, signatures: newSignatures });
+      const newMarks = annotations.marks?.map(updateItem);
+      setAnnotations({ ...annotations, images: newImages, signatures: newSignatures, marks: newMarks });
     } else if (cropStart && mode === 'select') {
       const dx = x - cropStart.clickX;
       const dy = y - cropStart.clickY;
@@ -534,6 +545,21 @@ const PdfViewer = ({
     }
   };
 
+  const handleMarkPointerDown = (e, mark) => {
+    if (mode === 'erase') {
+      e.stopPropagation();
+      commitAnnotations({ ...annotations, marks: annotations.marks?.filter(item => item.id !== mark.id) || [] });
+      if (selectedTextId === mark.id) setSelectedTextId(null);
+    } else if (mode === 'select') {
+      e.stopPropagation();
+      e.currentTarget.setPointerCapture?.(e.pointerId);
+      setSelectedTextId(mark.id);
+      const rect = containerRef.current.getBoundingClientRect();
+      setDraggingId(mark.id);
+      setDragOffset({ x: e.clientX - rect.left - mark.x, y: e.clientY - rect.top - mark.y });
+    }
+  };
+
   const handleTextPointerDown = (e, textItem) => {
     if (e.target.dataset.isHandle) return;
     if (mode === 'erase') {
@@ -641,6 +667,7 @@ const PdfViewer = ({
   const handleResizePointerDown = (e, item, handle) => {
     if (mode === 'select') {
       e.stopPropagation();
+      e.currentTarget.setPointerCapture?.(e.pointerId);
       setSelectedTextId(item.id);
       setResizingId(item.id);
       const rect = containerRef.current.getBoundingClientRect();
@@ -793,7 +820,7 @@ const PdfViewer = ({
         onPointerUp={handlePointerUp}
         onPointerCancel={handlePointerCancel}
         style={{
-          pointerEvents: ['select', 'draw', 'text', 'erase', 'highlight', 'shape', 'stamp', 'signature', 'comment'].includes(mode) ? 'auto' : 'none',
+          pointerEvents: ['select', 'draw', 'text', 'erase', 'highlight', 'shape', 'mark', 'stamp', 'signature', 'comment'].includes(mode) ? 'auto' : 'none',
           userSelect: mode === 'select' || mode === 'text' ? 'auto' : 'none',
           touchAction: 'none'
         }}
@@ -850,6 +877,23 @@ const PdfViewer = ({
           ))}
           {currentShape && renderShapeSVG(currentShape, true)}
         </svg>
+
+        {annotations.marks?.map(mark => {
+          const isSelected = mark.id === selectedTextId;
+          return (
+            <div key={mark.id}
+              onPointerDown={(e) => handleMarkPointerDown(e, mark)}
+              style={{ position: 'absolute', left: mark.x, top: mark.y, width: mark.width, height: mark.height, pointerEvents: (mode === 'select' || mode === 'erase') ? 'auto' : 'none', cursor: mode === 'select' ? 'move' : 'default', border: isSelected ? '1px dashed #3b82f6' : '1px solid transparent', boxSizing: 'border-box' }}
+            >
+              <svg width="100%" height="100%" viewBox="0 0 100 100" preserveAspectRatio="none" aria-label={mark.type === 'check' ? 'Check mark' : 'X mark'}>
+                {mark.type === 'check'
+                  ? <path d="M12 52 L39 79 L89 20" fill="none" stroke={mark.color || '#111827'} strokeWidth="12" strokeLinecap="round" strokeLinejoin="round" />
+                  : <path d="M22 22 L78 78 M78 22 L22 78" fill="none" stroke={mark.color || '#111827'} strokeWidth="12" strokeLinecap="round" />}
+              </svg>
+              {isSelected && mode === 'select' && renderResizeHandles(mark)}
+            </div>
+          );
+        })}
 
         {}
         {annotations.highlights?.map((hl) => (

@@ -35,6 +35,7 @@ function App() {
   const [selectedTextId, setSelectedTextId] = useState(null);
   const [strokeWidth, setStrokeWidth] = useState(3);
   const [shapeType, setShapeType] = useState('rectangle');
+  const [markType, setMarkType] = useState('check');
   const [highlightColor, setHighlightColor] = useState('#ffff00');
 
   const [zoomLevel, setZoomLevel] = useState(1.5);
@@ -438,7 +439,7 @@ function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [pdfDoc, currentPage, numPages, annotations, history, redoHistory, pdfFile, zoomLevel]);
 
-  const emptyAnn = { paths: [], texts: [], images: [], erasures: [], highlights: [], shapes: [], stamps: [], signatures: [], comments: [] };
+  const emptyAnn = { paths: [], texts: [], images: [], erasures: [], highlights: [], shapes: [], marks: [], stamps: [], signatures: [], comments: [] };
 
   return (
     <div
@@ -491,6 +492,8 @@ function App() {
         onStrokeWidthChange={setStrokeWidth}
         shapeType={shapeType}
         onShapeTypeChange={setShapeType}
+        markType={markType}
+        onMarkTypeChange={(type) => { setMarkType(type); setMode('mark'); }}
         onToggleSearch={() => setShowSearch(prev => !prev)}
         onOpenStampPicker={() => setShowStampPicker(true)}
         onOpenSignaturePad={() => setShowSignaturePad(true)}
@@ -552,6 +555,7 @@ function App() {
                 currentAlignment={currentAlignment}
                 scale={zoomLevel}
                 shapeType={shapeType}
+                markType={markType}
                 strokeWidth={strokeWidth}
                 highlightColor={highlightColor}
                 savedSignature={savedSignature}

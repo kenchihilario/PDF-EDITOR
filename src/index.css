@@ -573,6 +573,11 @@ input[type="color"]:hover {
   cursor: crosshair;
 }
 
+.interactive-overlay.mode-mark {
+  pointer-events: auto;
+  cursor: crosshair;
+}
+
 .interactive-overlay.mode-stamp {
   pointer-events: auto;
   cursor: copy;

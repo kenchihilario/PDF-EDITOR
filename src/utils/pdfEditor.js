@@ -269,6 +269,32 @@ export const exportPdf = async (originalPdfBytes, annotations, scale = 1.5, page
       }
     }
 
+    if (pageAnns.marks) {
+      for (const mark of pageAnns.marks) {
+        const x = mark.x / SCALE;
+        const y = height - ((mark.y + mark.height) / SCALE);
+        const width = mark.width / SCALE;
+        const markHeight = mark.height / SCALE;
+        const color = hexToRgb(mark.color || '#111827');
+        const strokeColor = rgb(color.r, color.g, color.b);
+        const thickness = Math.max(1, Math.min(width, markHeight) * 0.12);
+        const line = (x1, y1, x2, y2) => page.drawLine({
+          start: { x: x + (x1 * width), y: y + (y1 * markHeight) },
+          end: { x: x + (x2 * width), y: y + (y2 * markHeight) },
+          thickness,
+          color: strokeColor,
+        });
+
+        if (mark.type === 'check') {
+          line(0.12, 0.52, 0.39, 0.79);
+          line(0.39, 0.79, 0.89, 0.20);
+        } else {
+          line(0.22, 0.22, 0.78, 0.78);
+          line(0.78, 0.22, 0.22, 0.78);
+        }
+      }
+    }
+
     if (pageAnns.texts) {
       for (const t of pageAnns.texts) {
         const pdfXBase = t.x / SCALE;
