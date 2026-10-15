@@ -169,7 +169,7 @@ function App() {
 
   useEffect(() => {
     if (!draftId) return undefined;
-    const timeoutId = setTimeout(() => {
+    const saveDraft = () => {
       try {
         localStorage.setItem(`pdfeditor:draft:${draftId}`, JSON.stringify({
           version: 1,
@@ -183,8 +183,16 @@ function App() {
         console.error('Could not save this browser draft:', error);
         setDraftStatus('unavailable');
       }
-    }, 500);
-    return () => clearTimeout(timeoutId);
+    };
+
+    const timeoutId = setTimeout(saveDraft, 500);
+    window.addEventListener('pagehide', saveDraft);
+    window.addEventListener('beforeunload', saveDraft);
+    return () => {
+      clearTimeout(timeoutId);
+      window.removeEventListener('pagehide', saveDraft);
+      window.removeEventListener('beforeunload', saveDraft);
+    };
   }, [draftId, annotations, pageRotations, zoomLevel]);
 
   useEffect(() => {
@@ -761,8 +769,8 @@ function App() {
           <div className="status-bar-left">
             <span className="status-item">Page {currentPage} of {numPages}</span>
             <span className="status-item">Zoom: {Math.round(zoomLevel * 100)}%</span>
-            <span className="status-item" title="Draft is saved separately in this browser for this PDF">
-              {draftStatus === 'saving' ? 'Saving draft…' : draftStatus === 'unavailable' ? 'Draft storage unavailable' : draftStatus === 'restored' ? 'Draft restored' : draftStatus === 'saved' ? 'Draft saved in this browser' : ''}
+            <span className="status-item" title="This draft is stored only in this browser on this PC and is not synced to other computers">
+              {draftStatus === 'saving' ? 'Saving local draft…' : draftStatus === 'unavailable' ? 'Local draft storage unavailable' : draftStatus === 'restored' ? 'Local draft restored' : draftStatus === 'saved' ? 'Draft saved on this PC' : ''}
             </span>
             {pageRotations[currentPage] ? <span className="status-item">Rotation: {pageRotations[currentPage]}°</span> : null}
           </div>
