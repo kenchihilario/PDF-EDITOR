@@ -162,9 +162,39 @@ const PdfViewer = ({
     return true;
   }, [setAnnotations]);
 
+  // Switching tools ends any in-progress pointer interaction and clears the
+  // selection handles. Pointer capture keeps resize/drag completion reliable
+  // even when the pointer leaves the small white handle.
+  const previousModeRef = useRef(mode);
+  useEffect(() => {
+    if (previousModeRef.current === mode) return;
+    previousModeRef.current = mode;
+    if (draggingId || resizingId || resizeStart || cropStart) commitAnnotations(annotations);
+    if (activePointerIdRef.current !== null && containerRef.current?.hasPointerCapture?.(activePointerIdRef.current)) {
+      containerRef.current.releasePointerCapture(activePointerIdRef.current);
+    }
+    activePointerIdRef.current = null;
+    dragOriginAnnotationsRef.current = null;
+    setDraggingId(null);
+    setResizingId(null);
+    setResizeStart(null);
+    setCropStart(null);
+    setSelectedTextId(null);
+  }, [mode]);
+
   useEffect(() => {
     const handleKeyDown = (e) => {
-      if (e.key === 'Escape' && cancelTextDrag()) {
+      if (e.key === 'Escape') {
+        cancelTextDrag();
+        setSelectedTextId(null);
+        setDraggingId(null);
+        setResizingId(null);
+        setResizeStart(null);
+        setCropStart(null);
+        if (activePointerIdRef.current !== null && containerRef.current?.hasPointerCapture?.(activePointerIdRef.current)) {
+          containerRef.current.releasePointerCapture(activePointerIdRef.current);
+        }
+        activePointerIdRef.current = null;
         e.preventDefault();
         e.stopPropagation();
         return;
@@ -231,9 +261,12 @@ const PdfViewer = ({
   const handlePointerDown = (e) => {
     if (contextMenu) setContextMenu(null);
 
-    if ((mode === 'select' || mode === 'erase') && e.target === containerRef.current) {
+    if ((mode === 'select' || mode === 'erase') && !e.target.closest?.('[data-annotation-item="true"]')) {
       setSelectedTextId(null);
       if (croppingImageId) setCroppingImageId(null);
+      setDraggingId(null);
+      setResizingId(null);
+      setResizeStart(null);
       return;
     }
 
@@ -497,6 +530,7 @@ const PdfViewer = ({
     }
     dragOriginAnnotationsRef.current = null;
     activePointerIdRef.current = null;
+    setResizeStart(null);
   };
 
   const handlePointerCancel = () => {
@@ -719,6 +753,8 @@ const PdfViewer = ({
   const handleTextResizePointerDown = (e, textItem, handle) => {
     if (mode === 'select') {
       e.stopPropagation();
+      activePointerIdRef.current = e.pointerId;
+      containerRef.current?.setPointerCapture?.(e.pointerId);
       setDraggingId(null);
       setSelectedTextId(textItem.id);
       const rect = containerRef.current.getBoundingClientRect();
@@ -1176,7 +1212,7 @@ const PdfViewer = ({
           if (t.id === editingTextId) return null;
           const isSelected = t.id === selectedTextId;
           return (
-            <div key={t.id}
+            <div key={t.id} data-annotation-item="true"
               onPointerDown={(e) => handleTextPointerDown(e, t)}
               onDoubleClick={(e) => handleTextDoubleClick(e, t)}
               style={{
